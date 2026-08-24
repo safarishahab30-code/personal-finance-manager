@@ -1,18 +1,21 @@
 [
     {
+        "username": "شاهرخ_1",
+        "password": "66ad0e506013c90069e16027064d65b4$cc7e432407015df80d57f08c34589f338e241469a11940d8cc6e52fb29ef03fb",
+        "role": "admin",
+        "updated_at": "2026-08-24T04:20:51.899282"
+    },
+    {
+        "username": "alireza",
+        "password": "eabfa512123d24e94c46995be151f3c9$a41a5dd68fb3b810e9f620cce83b0cd981f0a43f7958c15e1892c03545812d87",
+        "role": "admin",
+        "updated_at": "2026-08-24T04:02:31.418848"
+    },
+    {
         "username": "shahab",
-        "password": "1234",
-        "role": "admin"
-    },
-    {
-        "username": "ali",
-        "password": "2222",
-        "role": "user"
-    },
-    {
-        "username": "شاهرخ",
-        "password": "1234",
-        "role": "user"
+        "password": "4d73af31006fbf1cd19cd450e60f1bd3$5466efbcdb4a94701279c2545c0c55631468b14b6fa5b691549ad6739779b2c8",
+        "role": "admin",
+        "updated_at": "2026-08-24T04:15:09.758646"
     },
     {
         "username": "mamad",

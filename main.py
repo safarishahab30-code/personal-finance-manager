@@ -1,25 +1,49 @@
-import json
 import os
-
 from auth import login, register, load_users
+from auth import change_password , change_username 
 from utils import farsi
-from transactions import add_transaction,show_user_transactions,show_all_transactions
-
+import secrets
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+from transactions import add_transaction, show_user_transactions, show_all_transactions
+def normalize_choice(s):
+    return s.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")).strip()
 print("Current directory:", os.getcwd())
 print("Files in directory:", os.listdir())
 
+def admin_settings(current_user):
+    while True:
+        print(farsi("\n--- تنظیمات ---"))
+        print(farsi("1. تغییر نام کاربری"))
+        print(farsi("2. تغییر رمز عبور"))
+        print(farsi("3. اطلاعات حساب"))
+        print(farsi("4. بازگشت"))
 
-def admin_menu():
+        choice = normalize_choice(input(farsi("انتخاب: ")))
+
+        if choice == "1":
+            change_username(current_user)
+        elif choice == "2":
+            change_password(current_user)
+        elif choice == "3":
+            print(farsi(f"نام کاربری: {current_user['username']} | نقش: {current_user['role']}"))
+        elif choice == "4":
+            break
+        else:
+            print(farsi("گزینه نامعتبر است."))
+
+def admin_menu(current_user):
     print("ADMIN MENU STARTED")
 
     while True:
-        print("\n--- Admin Panel ---")
+        print(farsi("\n--- پنل ادمین ---"))
         print(farsi("1. مشاهده کاربران"))
-        print(farsi("2.مشاهده تراكنش ها "))
+        print(farsi("2. مشاهده تراکنش‌ها"))
         print(farsi("3. تنظیمات"))
         print(farsi("4. خروج"))
 
-        choice = input("Option: ").strip()
+        choice = input(farsi("انتخاب: ")).strip()
 
         if choice == "1":
             users = load_users()
@@ -28,20 +52,17 @@ def admin_menu():
                 print(farsi("هیچ کاربری ثبت نشده است."))
             else:
                 print(farsi("\nفهرست کاربران:"))
-
                 for user in users:
                     username = user.get("username", "بدون نام")
                     role = user.get("role", "نامشخص")
+                    print(farsi(f"نام کاربری: {username} | نقش: {role}"))
 
-                    print(
-                        farsi(
-                            f"نام کاربری: {username} | نقش: {role}"
-                        )
-                    )
         elif choice == "2":
             show_all_transactions()
+
         elif choice == "3":
-            print(farsi("بخش تنظیمات هنوز پیاده‌سازی نشده است."))
+            admin_settings(current_user)
+
         elif choice == "4":
             print(farsi("خروج از پنل ادمین"))
             break
@@ -78,42 +99,39 @@ def user_menu(current_user):
         else:
             print(farsi("گزینه نامعتبر است."))
 
+
 def main():
     while True:
         print("\n--- Personal Finance Manager ---")
         print(farsi("1. ثبت نام"))
-        print(farsi("2. ورود"))
-        print(farsi("3. خروج"))
+        print(farsi("     2. ورود"))
+        print(farsi("       3. خروج"))
 
-        choice = input(farsi("انتخاب: ")).strip()
+        choice = input(farsi(" : انتخاب")).strip()
 
         if choice == "1":
             register()
 
         elif choice == "2":
-            user = login()
+            current_user = login()
 
-            if user is None:
-                print(
-                    farsi(
-                        "ورود ناموفق بود. نام کاربری یا رمز عبور اشتباه است."
-                    )
-                )
+            if current_user is None:
+                print(farsi("ورود ناموفق بود. نام کاربری یا رمز عبور اشتباه است."))
 
-            elif user["role"] == "admin":
-                admin_menu()
+            elif current_user.get("role") == "admin":
+                admin_menu(current_user)
 
             else:
-                user_menu(user)
+                user_menu(current_user)
 
         elif choice == "3":
-            print("Goodbye!")
+            print(farsi("خداحافظ!"))
             break
 
         else:
-            print("Invalid option. Try again.")
+            print(farsi("گزینه نامعتبر است."))
+            # اگر خواستی همین‌جا هم می‌توانیم انگلیسی را کامل فارسی کنیم
 
 
 if __name__ == "__main__":
     main()
-
