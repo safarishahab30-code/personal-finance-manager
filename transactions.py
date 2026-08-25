@@ -7,7 +7,11 @@ from utils import farsi
 TRANSACTIONS_FILE = "data/transactions.json"
 INCOME_CATEGORIES = ["حقوق", "یارانه", "فروش", "سایر"]
 EXPENSE_CATEGORIES = ["خوراک", "اجاره", "حمل و نقل", "تفریح", "سایر"]
-
+def generate_transaction_id(transactions):
+    if not transactions:
+        return 1
+    # پیدا کردن بزرگ‌ترین id موجود و یکی افزودن به آن
+    return max(t.get("id", 0) for t in transactions) + 1
 def add_transaction(username, transaction_type):
     type_mapping = {"درآمد": "income", "مخارج": "expense", "income": "income", "expense": "expense"}
     normalized_type = type_mapping.get(transaction_type)
@@ -55,10 +59,11 @@ def add_transaction(username, transaction_type):
     # ثبت نهایی
     current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     new_transaction = {
+        "id": generate_transaction_id(transactions),
         "username": username,
         "type": normalized_type,
         "amount": amount,
-        "category": selected_category, # استفاده از متغیر نهایی
+        "category": selected_category,
         "note": note,
         "date": current_date
     }
@@ -135,3 +140,115 @@ def show_all_transactions():
                 f"------------------------------"
             )
         )
+def delete_transaction(username):
+    transactions = load_data(TRANSACTIONS_FILE)
+    
+    # فیلتر تراکنش‌های کاربر جاری
+    user_txs = [t for t in transactions if t.get("username") == username]
+    
+    if not user_txs:
+        print(farsi("شما هیچ تراکنشی برای حذف ندارید."))
+        return
+
+    # نمایش لیست با شناسه
+    print(farsi("\n--- لیست تراکنش‌های شما جهت حذف ---"))
+    for t in user_txs:
+        t_type = "درآمد" if t.get("type") == "income" else "مخارج"
+        print(farsi(f"شناسه: {t.get('id')} | نوع: {t_type} | مبلغ: {t.get('amount', 0):,.0f} | دسته: {t.get('category')} | تاریخ: {t.get('date')}"))
+    print(farsi("----------------------------------"))
+
+    target_id_input = input(farsi("شناسه (ID) تراکنش مورد نظر برای حذف را وارد کنید (یا 0 برای انصراف): ")).strip()
+    
+    if target_id_input == "0" or not target_id_input.isdigit():
+        print(farsi("عملیات حذف لغو شد."))
+        return
+
+    target_id = int(target_id_input)
+
+    # بررسی مالکیت تراکنش
+    tx_to_delete = next((t for t in user_txs if t.get("id") == target_id), None)
+    
+    if not tx_to_delete:
+        print(farsi("خطا: تراکنشی با این شناسه متعلق به شما یافت نشد."))
+        return
+
+    # تأیید نهایی
+    confirm = input(farsi(f"آیا از حذف تراکنش شناسه {target_id} مطمئن هستید؟ (y/n): ")).strip().lower()
+    if confirm == 'y':
+        updated_transactions = [t for t in transactions if t.get("id") != target_id]
+        save_data(TRANSACTIONS_FILE, updated_transactions)
+        print(farsi("تراکنش با موفقیت حذف شد."))
+    else:
+        print(farsi("حذف تراکنش لغو شد."))
+def edit_transaction(username):
+    transactions = load_data(TRANSACTIONS_FILE)
+    user_txs = [t for t in transactions if t.get("username") == username]
+
+    if not user_txs:
+        print(farsi("شما هیچ تراکنشی برای ویرایش ندارید."))
+        return
+
+    print(farsi("\n--- لیست تراکنش‌های شما جهت ویرایش ---"))
+    for t in user_txs:
+        t_type = "درآمد" if t.get("type") == "income" else "مخارج"
+        print(farsi(f"شناسه: {t.get('id')} | نوع: {t_type} | مبلغ: {t.get('amount', 0):,.0f} | دسته: {t.get('category')} | تاریخ: {t.get('date')}"))
+    print(farsi("-----------------------------------"))
+
+    target_id_input = input(farsi("شناسه (ID) تراکنش را وارد کنید (یا 0 برای انصراف): ")).strip()
+    if target_id_input == "0" or not target_id_input.isdigit():
+        print(farsi("عملیات ویرایش لغو شد."))
+        return
+
+    target_id = int(target_id_input)
+    tx = next((t for t in user_txs if t.get("id") == target_id), None)
+
+    if not tx:
+        print(farsi("خطا: تراکنشی با این شناسه متعلق به شما یافت نشد."))
+        return
+
+    print(farsi("\n(در صورت عدم تمایل به تغییر هر بخش، Enter بزنید)"))
+
+    # ۱. ویرایش مبلغ
+    new_amount_input = input(farsi(f"مبلغ جدید (فعلی: {tx.get('amount'):,.0f}): ")).strip()
+    if new_amount_input:
+        try:
+            val = float(new_amount_input)
+            if val > 0:
+                tx["amount"] = val
+            else:
+                print(farsi("مبلغ نامعتبر بود؛ مقدار قبلی حفظ شد."))
+        except ValueError:
+            print(farsi("ورودی عدد نبود؛ مقدار قبلی حفظ شد."))
+
+    # ۲. ویرایش دسته‌بندی
+    t_type = tx.get("type")
+    categories = INCOME_CATEGORIES if t_type == "income" else EXPENSE_CATEGORIES
+    print(farsi(f"\nدسته‌بندی‌های موجود برای {('درآمد' if t_type == 'income' else 'مخارج')}:"))
+    for idx, cat in enumerate(categories, 1):
+        print(farsi(f"{idx}. {cat}"))
+
+    cat_choice = input(farsi(f"انتخاب دسته‌بندی جدید (فعلی: {tx.get('category')}): ")).strip()
+    if cat_choice.isdigit():
+        idx = int(cat_choice) - 1
+        if 0 <= idx < len(categories):
+            selected = categories[idx]
+            if selected == "سایر":
+                custom = input(farsi("نام دسته‌بندی دلخواه: ")).strip()
+                if custom:
+                    tx["category"] = custom
+            else:
+                tx["category"] = selected
+
+    # ۳. ویرایش توضیحات
+    new_note = input(farsi(f"توضیحات جدید (فعلی: {tx.get('note')}): ")).strip()
+    if new_note:
+        tx["note"] = new_note
+
+    save_data(TRANSACTIONS_FILE, transactions)
+    print(farsi("تراکنش با موفقیت ویرایش شد."))
+def validate_amount(val):
+    try:
+        amount = int(val)
+        return amount if amount > 0 else None
+    except (ValueError, TypeError):
+        return None

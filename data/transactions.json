@@ -38,5 +38,32 @@
         "category": "حمل و نقل",
         "note": "محل کار",
         "date": "2026-08-24 02:08:23"
+    },
+    {
+        "id": 2,
+        "username": "mamad",
+        "type": "expense",
+        "amount": 486.0,
+        "category": "اجاره",
+        "note": "بدون توضیح",
+        "date": "2026-08-24 04:51:54"
+    },
+    {
+        "id": 3,
+        "username": "mamad",
+        "type": "income",
+        "amount": 48000.0,
+        "category": "یارانه",
+        "note": "بدون توضیح",
+        "date": "2026-08-24 05:12:41"
+    },
+    {
+        "id": 4,
+        "username": "mamad",
+        "type": "expense",
+        "amount": 780000.0,
+        "category": "تفریح",
+        "note": "بدون توضیح",
+        "date": "2026-08-24 05:12:49"
     }
 ]

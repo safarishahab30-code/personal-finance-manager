@@ -1,10 +1,12 @@
 import json
 import os
 import re
-import secrets
 import hashlib
-from datetime import datetime
+import datetime
+import secrets
+import string
 from utils import farsi
+import random
 
 USERS_FILE = "data/users.json"
 
@@ -269,3 +271,105 @@ def change_password(current_user):
         save_users(users)
         print(farsi("رمز عبور با موفقیت تغییر کرد."))
         break
+def check_password_strength(password):
+    if len(password) < 6:
+        return False, "weak_length"
+    has_digit = any(c.isdigit() for c in password)
+    has_alpha = any(c.isalpha() for c in password)
+    if not (has_digit and has_alpha):
+        return False, "weak_complexity"
+    return True, "strong"
+def generate_strong_password(length=10):
+    chars = string.ascii_letters + string.digits + "!@#$%^&*"
+    return "".join(secrets.choice(chars) for _ in range(length))
+
+
+def change_password(current_user):
+    print(farsi("\n--- تغییر رمز عبور ---"))
+    old_pass = input(farsi("رمز عبور فعلی خود را وارد کنید: "))
+    # اگر از سیستم هش استفاده می‌کنی، اینجا رمز هش‌شده تطبیق داده می‌شود
+    if old_pass != current_user.get("password"):
+        print(farsi("رمز عبور فعلی اشتباه است."))
+        return False
+
+    while True:
+        new_pass = input(
+            farsi("رمز عبور جدید را وارد کنید (یا 'p' برای رمز پیشنهادی): ")
+        )
+        if new_pass.lower() == "p":
+            suggested = generate_strong_password()
+            print(farsi(f"رمز پیشنهادی: {suggested}"))
+            confirm = input(
+                farsi("آیا از این رمز استفاده شود؟ (y/n): ")
+            ).lower()
+            if confirm == "y":
+                new_pass = suggested
+            else:
+                continue
+
+        is_strong, reason = check_password_strength(new_pass)
+        if not is_strong:
+            print(
+                farsi(
+                    "رمز ضعیف است. باید حداقل ۶ کاراکتر و شامل حروف و ارقام باشد."
+                )
+            )
+            continue
+
+        confirm_pass = input(farsi("تکرار رمز عبور جدید: "))
+        if new_pass != confirm_pass:
+            print(farsi("تکرار رمز مطابقت ندارد."))
+            continue
+
+        current_user["password"] = new_pass
+        current_user["updated_at"] = datetime.datetime.now().isoformat()
+        print(farsi("رمز عبور با موفقیت تغییر یافت."))
+        return True
+def suggest_username(base_name, existing_users):
+    existing_names = {u["username"] for u in existing_users}
+    while True:
+        candidate = f"{base_name}_{random.randint(100, 999)}"
+        if candidate not in existing_names:
+            return candidate
+
+
+def change_username(current_user, all_users, all_transactions):
+    print(farsi("\n--- تغییر نام کاربری ---"))
+    new_username = input(farsi("نام کاربری جدید را وارد کنید: ")).strip()
+
+    if not new_username:
+        print(farsi("نام کاربری نمی‌تواند خالی باشد."))
+        return False
+
+    if new_username == current_user["username"]:
+        print(farsi("این نام کاربری با نام فعلی شما یکسان است."))
+        return False
+
+    existing_names = {
+        u["username"] for u in all_users if u["username"] != current_user["username"]
+    }
+    if new_username in existing_names:
+        suggested = suggest_username(new_username, all_users)
+        print(farsi(f"این نام کاربری قبلاً ثبت شده است. نام پیشنهادی: {suggested}"))
+        choice = input(farsi("آیا مایل به استفاده از نام پیشنهادی هستید؟ (y/n): ")).strip().lower()
+        if choice == "y":
+            new_username = suggested
+        else:
+            return False
+
+    confirm = input(farsi(f"آیا از تغییر نام کاربری به '{new_username}' اطمینان دارید؟ (y/n): ")).strip().lower()
+    if confirm != "y":
+        print(farsi("عملیات لغو شد."))
+        return False
+
+    old_username = current_user["username"]
+    current_user["username"] = new_username
+    current_user["updated_at"] = datetime.datetime.now().isoformat()
+
+    # به‌روزرسانی نام کاربری در تراکنش‌های قبلی
+    for tx in all_transactions:
+        if tx.get("username") == old_username:
+            tx["username"] = new_username
+
+    print(farsi("نام کاربری و تراکنش‌های مرتبط با موفقیت به‌روزرسانی شدند."))
+    return True
