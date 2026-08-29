@@ -2,7 +2,7 @@ import json
 import os
 import re
 import hashlib
-import datetime
+from datetime import datetime
 import secrets
 import string
 from utils import farsi
