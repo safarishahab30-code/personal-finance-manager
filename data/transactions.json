@@ -1,0 +1,79 @@
+[
+    {
+        "username": "shahab",
+        "type": "income",
+        "amount": 489888.0,
+        "category": "حقوق",
+        "note": "بدون توضیح",
+        "date": "2026-08-10 21:05:55"
+    },
+    {
+        "username": "shahab",
+        "type": "income",
+        "amount": 1800000.0,
+        "category": "حقوق",
+        "note": "بدون توضیح",
+        "date": "2026-08-10 21:12:47"
+    },
+    {
+        "username": "shahab",
+        "type": "income",
+        "amount": 470000.0,
+        "category": "حقوق",
+        "note": "بدون توضیح",
+        "date": "2026-08-11 18:21:13"
+    },
+    {
+        "username": "shahab",
+        "type": "expense",
+        "amount": 1478888.0,
+        "category": "اجاره",
+        "note": "بدون توضیح",
+        "date": "2026-08-11 18:25:27"
+    },
+    {
+        "username": "shahab",
+        "type": "expense",
+        "amount": 750000.0,
+        "category": "حمل و نقل",
+        "note": "محل کار",
+        "date": "2026-08-24 02:08:23"
+    },
+    {
+        "id": 2,
+        "username": "mamad",
+        "type": "expense",
+        "amount": 486.0,
+        "category": "اجاره",
+        "note": "بدون توضیح",
+        "date": "2026-08-24 04:51:54"
+    },
+    {
+        "id": 3,
+        "username": "mamad",
+        "type": "income",
+        "amount": 48000.0,
+        "category": "یارانه",
+        "note": "بدون توضیح",
+        "date": "2026-08-24 05:12:41"
+    },
+    {
+        "id": 4,
+        "username": "mamad",
+        "type": "expense",
+        "amount": 780000.0,
+        "category": "تفریح",
+        "note": "بدون توضیح",
+        "date": "2026-08-24 05:12:49"
+    },
+    {
+        "id": 5,
+        "username": "asal",
+        "type": "income",
+        "amount": 1750000,
+        "category": "فروش",
+        "account": "کارت اصلی",
+        "note": "گل برای مهری",
+        "date": "2026-08-30 00:59:43"
+    }
+]
