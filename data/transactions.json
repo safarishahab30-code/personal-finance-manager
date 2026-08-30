@@ -67,13 +67,12 @@
         "date": "2026-08-24 05:12:49"
     },
     {
-        "id": 5,
-        "username": "asal",
+        "username": "asal1384",
         "type": "income",
-        "amount": 1750000,
+        "amount": 0.0,
         "category": "فروش",
         "account": "کارت اصلی",
-        "note": "گل برای مهری",
-        "date": "2026-08-30 00:59:43"
+        "note": "",
+        "date": "2026-08-30 02:50:09"
     }
 ]

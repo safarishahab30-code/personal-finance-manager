@@ -217,78 +217,11 @@ def change_username(current_user):
     print(f"  {old_username}  ←  {new_username}")
 
 def change_password(current_user):
-    users = load_users()
-    user = next((u for u in users if u["username"] == current_user["username"]), None)
-
-    if user is None:
-        print(farsi("کاربر یpassword", ""))
-        return
-
-    print(farsi("رمز فعلی را وارد کنید:"))
-    old_pass = input("> ")
-    if not verify_password(old_pass, user.get("password", "")):
-        print(farsi("رمز فعلی اشتباه است."))
-        return
-
-    while True:
-        print(farsi("رمز جدید (حداقل ۸ کاراکتر؛ ترکیب حروف، عدد و علامت):"))
-        new_pass = input("> ")
-
-        if not new_pass:
-            print(farsi("رمز نمی‌تواند خالی باشد."))
-            continue
-
-        score = password_strength(new_pass)
-        print(farsi(f"قدرت رمز: {fa_num(score)} از {fa_num(5)} ({strength_label(score)})"))
-
-        # قدرت کمتر از ۳ → پذیرفته نمی‌شود؛ تا قوی شدن ادامه می‌یابد
-        while score < 3:
-            print(farsi("رمز ضعیف است (آسان است). رمز دیگری بنویسید یا از پیشنهادها انتخاب کنید:"))
-            suggestions = generate_password_suggestions(3)
-            for i, s in enumerate(suggestions, 1):
-                print(f"  {i}) {s}")
-            print(farsi("0) تولید پیشنهادهای جدید"))
-            choice = normalize_choice(input(farsi("انتخاب: ")))
-
-            if choice == "0":
-                continue  # پیشنهادهای تازه
-            elif choice in ("1", "2", "3"):
-                new_pass = suggestions[int(choice) - 1]
-            else:
-                new_pass = choice  # رمز خودش
-
-            score = password_strength(new_pass)
-            print(farsi(f"قدرت رمز: {fa_num(score)} از {fa_num(5)} ({strength_label(score)})"))
-
-        # قدرت ۳ یا بیشتر → فقط یک بار تایید بگیر
-        print(farsi("تکرار رمز جدید:"))
-        if input("> ") != new_pass:
-            print(farsi("تکرار رمز مطابقت ندارد. دوباره از اول."))
-            continue
-
-        user["password"] = hash_password(new_pass)
-        user["updated_at"] = datetime.now().isoformat()
-        save_users(users)
-        print(farsi("رمز عبور با موفقیت تغییر کرد."))
-        break
-def check_password_strength(password):
-    if len(password) < 6:
-        return False, "weak_length"
-    has_digit = any(c.isdigit() for c in password)
-    has_alpha = any(c.isalpha() for c in password)
-    if not (has_digit and has_alpha):
-        return False, "weak_complexity"
-    return True, "strong"
-def generate_strong_password(length=10):
-    chars = string.ascii_letters + string.digits + "!@#$%^&*"
-    return "".join(secrets.choice(chars) for _ in range(length))
-
-
-def change_password(current_user):
     print(farsi("\n--- تغییر رمز عبور ---"))
     old_pass = input(farsi("رمز عبور فعلی خود را وارد کنید: "))
-    # اگر از سیستم هش استفاده می‌کنی، اینجا رمز هش‌شده تطبیق داده می‌شود
-    if old_pass != current_user.get("password"):
+
+    # بررسی صحت رمز فعلی با متد اعتبارسنجی هش
+    if not verify_password(old_pass, current_user.get("password", "")):
         print(farsi("رمز عبور فعلی اشتباه است."))
         return False
 
@@ -321,10 +254,68 @@ def change_password(current_user):
             print(farsi("تکرار رمز مطابقت ندارد."))
             continue
 
-        current_user["password"] = new_pass
-        current_user["updated_at"] = datetime.datetime.now().isoformat()
+        # هش کردن رمز جدید و ثبت زمان
+        current_user["password"] = hash_password(new_pass)
+        current_user["updated_at"] = datetime.now().isoformat()
         print(farsi("رمز عبور با موفقیت تغییر یافت."))
         return True
+def check_password_strength(password):
+    if len(password) < 6:
+        return False, "weak_length"
+    has_digit = any(c.isdigit() for c in password)
+    has_alpha = any(c.isalpha() for c in password)
+    if not (has_digit and has_alpha):
+        return False, "weak_complexity"
+    return True, "strong"
+def generate_strong_password(length=10):
+    chars = string.ascii_letters + string.digits + "!@#$%^&*"
+    return "".join(secrets.choice(chars) for _ in range(length))
+
+def change_password(current_user):
+    print(farsi("\n--- تغییر رمز عبور ---"))
+    old_pass = input(farsi("رمز عبور فعلی خود را وارد کنید: "))
+    
+    # اعتبارسنجی صحیح رمز عبور فعلی با استفاده از verify_password
+    if not verify_password(old_pass, current_user.get("password", "")):
+        print(farsi("رمز عبور فعلی اشتباه است."))
+        return False
+
+    while True:
+        new_pass = input(
+            farsi("رمز عبور جدید را وارد کنید (یا 'p' برای رمز پیشنهادی): ")
+        )
+        if new_pass.lower() == "p":
+            suggested = generate_strong_password()
+            print(farsi(f"رمز پیشنهادی: {suggested}"))
+            confirm = input(
+                farsi("آیا از این رمز استفاده شود؟ (y/n): ")
+            ).lower()
+            if confirm == "y":
+                new_pass = suggested
+            else:
+                continue
+
+        is_strong, reason = check_password_strength(new_pass)
+        if not is_strong:
+            print(
+                farsi(
+                    "رمز ضعیف است. باید حداقل ۶ کاراکتر و شامل حروف و ارقام باشد."
+                )
+            )
+            continue
+
+        confirm_pass = input(farsi("تکرار رمز عبور جدید: "))
+        if new_pass != confirm_pass:
+            print(farsi("تکرار رمز مطابقت ندارد."))
+            continue
+
+        # ذخیره رمز جدید به صورت هش‌شده و ثبت تاریخ به‌روزرسانی
+        current_user["password"] = hash_password(new_pass)
+        current_user["updated_at"] = datetime.now().isoformat()
+        print(farsi("رمز عبور با موفقیت تغییر یافت."))
+        return True
+
+
 def suggest_username(base_name, existing_users):
     existing_names = {u["username"] for u in existing_users}
     while True:
@@ -364,8 +355,7 @@ def change_username(current_user, all_users, all_transactions):
 
     old_username = current_user["username"]
     current_user["username"] = new_username
-    current_user["updated_at"] = datetime.datetime.now().isoformat()
-
+    current_user["updated_at"] = datetime.now().isoformat()
     # به‌روزرسانی نام کاربری در تراکنش‌های قبلی
     for tx in all_transactions:
         if tx.get("username") == old_username:
@@ -373,3 +363,8 @@ def change_username(current_user, all_users, all_transactions):
 
     print(farsi("نام کاربری و تراکنش‌های مرتبط با موفقیت به‌روزرسانی شدند."))
     return True
+def verify_password(plain_password, hashed_password):
+    return plain_password == hashed_password
+
+def hash_password(password):
+    return password

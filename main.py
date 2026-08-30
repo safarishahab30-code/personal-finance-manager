@@ -2,11 +2,11 @@ import os
 import sys
 import io
 import secrets
+from storage import load_data, save_data
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 from auth import login, register, load_users, change_password, change_username
 from utils import farsi
-from storage import load_data
 from reports import (
     admin_report_summary,
     show_expense_chart,
@@ -139,6 +139,8 @@ def user_menu(current_user):
             add_transaction(current_user["username"], "expense")
         elif choice == "3":
             show_user_transactions(current_user["username"])
+            input(farsi("\nبرای بازگشت اینتر را بزنید..."))
+
         elif choice == "4":
             edit_transaction(current_user["username"])
         elif choice == "5":

@@ -8,14 +8,14 @@ from utils import (
     parse_farsi_number,
 )
 
-TRANSACTIONS_FILE = "data/transactions.json"
+TRANSACTIONS_FILE = os.path.join(os.path.dirname(__file__), "data", "transactions.json")
 INCOME_CATEGORIES = ["حقوق", "یارانه", "فروش", "سایر"]
 EXPENSE_CATEGORIES = ["خوراک", "اجاره", "حمل و نقل", "تفریح", "سایر"]
 
 
 def validate_amount(val):
     try:
-        clean_val = parse_farsi_number(val).replace(",", "")
+        clean_val = parse_farsi_number(str(val)).replace(",", "")
         amount = int(clean_val)
         return amount if amount > 0 else None
     except (ValueError, TypeError):
@@ -104,11 +104,14 @@ def add_transaction(username, transaction_type):
     if not note:
         note = "بدون توضیح"
 
+    # استخراج نام کاربری دقیق
+    clean_username = username.get("username") if isinstance(username, dict) else str(username)
+
     # ثبت تراکنش
     current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     new_transaction = {
         "id": generate_transaction_id(transactions),
-        "username": username,
+        "username": clean_username.strip(),
         "type": normalized_type,
         "amount": amount,
         "category": selected_category,
@@ -125,34 +128,19 @@ def add_transaction(username, transaction_type):
         )
     )
 
-
-def show_user_transactions(username):
-    transactions = load_data(TRANSACTIONS_FILE)
-    user_transactions = [
-        t for t in transactions if t.get("username") == username
-    ]
-
-    print(farsi("\n--- تراکنش‌های شما ---"))
-    if not user_transactions:
-        print(farsi("هنوز هیچ تراکنشی ثبت نکرده‌اید."))
-        return
-
     type_mapping = {"income": "درآمد", "expense": "مخارج"}
-
     for index, tx in enumerate(user_transactions, 1):
-        t_type = type_mapping.get(tx.get("type"), tx.get("type"))
+        t_type = type_mapping.get(tx.get("type"), tx.get("type", "نامشخص"))
         account = tx.get("account", "کارت اصلی")
-        print(
-            farsi(
-                f"\nتراکنش شماره {index} (شناسه: {tx.get('id')})\n"
-                f"نوع: {t_type} | حساب: {account}\n"
-                f"مبلغ: {format_money(tx.get('amount', 0))}\n"
-                f"دسته‌بندی: {tx.get('category')}\n"
-                f"توضیحات: {tx.get('note')}\n"
-                f"تاریخ: {tx.get('date')}\n"
-                f"------------------------------"
-            )
-        )
+        amt = tx.get("amount", 0)
+        cat = tx.get("category", "-")
+        note = tx.get("note", "بدون توضیح")
+        date = tx.get("date", "-")
+
+        print(farsi(f"تراکنش {index}: نوع: {t_type} | حساب: {account}"))
+        print(farsi(f"مبلغ: {amt} | دسته: {cat} | تاریخ: {date}"))
+        print(farsi(f"توضیحات: {note}"))
+        print("-" * 35)
 
 
 def show_all_transactions():
@@ -179,11 +167,45 @@ def show_all_transactions():
                 f"------------------------------"
             )
         )
+def show_user_transactions(username):
+    transactions = load_data(TRANSACTIONS_FILE)
+    
+    clean_username = username.get("username") if isinstance(username, dict) else str(username)
+    clean_username = clean_username.strip().lower()
 
+    user_transactions = [
+        t for t in transactions
+        if str(t.get("username", "")).strip().lower() == clean_username
+    ]
+
+    print(farsi("\n--- تراکنش‌های شما ---"))
+    if not user_transactions:
+        print(farsi("هنوز هیچ تراکنشی برای این حساب ثبت نشده است."))
+        return
+
+    type_mapping = {"income": "درآمد", "expense": "مخارج"}
+    for index, tx in enumerate(user_transactions, 1):
+        t_type = type_mapping.get(tx.get("type"), tx.get("type", "نامشخص"))
+        account = tx.get("account", "کارت اصلی")
+        amt = tx.get("amount", 0)
+        cat = tx.get("category", "-")
+        note = tx.get("note", "بدون توضیح")
+        date = tx.get("date", "-")
+
+        print(farsi(f"تراکنش {index}: نوع: {t_type} | حساب: {account}"))
+        print(farsi(f"مبلغ: {amt} | دسته: {cat} | تاریخ: {date}"))
+        print(farsi(f"توضیحات: {note}"))
+        print("-" * 35)
 
 def delete_transaction(username):
     transactions = load_data(TRANSACTIONS_FILE)
-    user_txs = [t for t in transactions if t.get("username") == username]
+    clean_username = username.get("username") if isinstance(username, dict) else str(username)
+    clean_username = clean_username.strip().lower()
+
+    user_txs = [
+        t for t in transactions
+        if str(t.get("username", "")).strip().lower() == clean_username
+    ]
 
     if not user_txs:
         print(farsi("شما هیچ تراکنشی برای حذف ندارید."))
@@ -238,7 +260,13 @@ def delete_transaction(username):
 
 def edit_transaction(username):
     transactions = load_data(TRANSACTIONS_FILE)
-    user_txs = [t for t in transactions if t.get("username") == username]
+    clean_username = username.get("username") if isinstance(username, dict) else str(username)
+    clean_username = clean_username.strip().lower()
+
+    user_txs = [
+        t for t in transactions
+        if str(t.get("username", "")).strip().lower() == clean_username
+    ]
 
     if not user_txs:
         print(farsi("شما هیچ تراکنشی برای ویرایش ندارید."))

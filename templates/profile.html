@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>پروفایل کاربری</title>
+    <style>
+        .container { max-width: 500px; margin: 20px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        .form-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 8px; margin-top: 5px; }
+        button { padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; width: 100%; }
+        .alert { padding: 10px; background: #e2e3e5; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>پروفایل: {{ user.username }}</h2>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}<div class="alert">{{ message }}</div>{% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <hr>
+        <h3>تغییر نام کاربری</h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="change_username">
+            <div class="form-group">
+                <input type="text" name="new_username" placeholder="نام کاربری جدید" required>
+            </div>
+            <button type="submit">ذخیره نام کاربری</button>
+        </form>
+
+        <hr>
+        <h3>تغییر رمز عبور</h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="change_password">
+            <div class="form-group">
+                <input type="password" name="old_password" placeholder="رمز عبور فعلی" required>
+            </div>
+            <div class="form-group">
+                <input type="password" name="new_password" placeholder="رمز عبور جدید" required>
+            </div>
+            <button type="submit">تغییر رمز عبور</button>
+        </form>
+        <br>
+        <a href="/dashboard">بازگشت به داشبورد</a>
+    </div>
+</body>
+</html>
