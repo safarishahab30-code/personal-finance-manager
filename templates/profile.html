@@ -2,49 +2,107 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>پروفایل کاربری</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=2">
     <style>
-        .container { max-width: 500px; margin: 20px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-        .form-group { margin-bottom: 15px; }
-        input { width: 100%; padding: 8px; margin-top: 5px; }
-        button { padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; width: 100%; }
-        .alert { padding: 10px; background: #e2e3e5; margin-bottom: 15px; }
+        .profile-container { max-width: 520px; }
+        .section-divider { border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 24px 0; padding-top: 16px; }
+        .badge { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; padding: 4px 10px; border-radius: 6px; font-size: 12px; }
+        .danger-badge { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 6px;
+            transition: background 0.2s;
+        }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>پروفایل: {{ user.username }}</h2>
-        
+    <div class="auth-card profile-container">
+        <div class="auth-header">
+            <h2>پروفایل: {{ user.username }}</h2>
+            <p>
+                وضعیت نقش: 
+                <span class="badge {{ 'danger-badge' if user.role == 'admin' else '' }}">
+                    {{ 'مدیر سیستم' if user.role == 'admin' else 'کاربر عادی' }}
+                </span>
+            </p>
+        </div>
+
+        <!-- نمایش پیام‌های سیستم -->
         {% with messages = get_flashed_messages() %}
             {% if messages %}
-                {% for message in messages %}<div class="alert">{{ message }}</div>{% endfor %}
+                {% for message in messages %}
+                    <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; color: #86efac; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; text-align: center;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <hr>
-        <h3>تغییر نام کاربری</h3>
-        <form method="POST">
+        <!-- فرم تغییر نام کاربری -->
+        <form method="POST" action="{{ url_for('profile') }}">
             <input type="hidden" name="action" value="change_username">
             <div class="form-group">
-                <input type="text" name="new_username" placeholder="نام کاربری جدید" required>
+                <label for="new_username">نام کاربری جدید</label>
+                <input type="text" id="new_username" name="new_username" placeholder="۳ تا ۲۰ کاراکتر انگلیسی" required>
             </div>
-            <button type="submit">ذخیره نام کاربری</button>
+            <button type="submit" class="btn-submit">ذخیره نام کاربری</button>
         </form>
 
-        <hr>
-        <h3>تغییر رمز عبور</h3>
-        <form method="POST">
+        <div class="section-divider"></div>
+
+        <!-- فرم تغییر رمز عبور -->
+        <form method="POST" action="{{ url_for('profile') }}">
             <input type="hidden" name="action" value="change_password">
             <div class="form-group">
-                <input type="password" name="old_password" placeholder="رمز عبور فعلی" required>
+                <label for="old_password">رمز عبور فعلی</label>
+                <input type="password" id="old_password" name="old_password" placeholder="رمز فعلی" required>
             </div>
             <div class="form-group">
-                <input type="password" name="new_password" placeholder="رمز عبور جدید" required>
+                <label for="new_password">رمز عبور جدید</label>
+                <input type="password" id="new_password" name="new_password" placeholder="حداقل ۸ کاراکتر" required>
+                <button type="button" class="btn-secondary" onclick="fetchSuggestedPassword()">پیشنهاد رمز عبور قوی</button>
             </div>
-            <button type="submit">تغییر رمز عبور</button>
+            <div class="form-group">
+                <label for="confirm_password">تکرار رمز عبور جدید</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="تکرار رمز جدید" required>
+            </div>
+            <button type="submit" class="btn-submit">تغییر رمز عبور</button>
         </form>
-        <br>
-        <a href="/dashboard">بازگشت به داشبورد</a>
+
+        <div class="auth-links">
+            <a href="{{ url_for('dashboard') }}">بازگشت به داشبورد</a>
+        </div>
     </div>
+
+    <script>
+        async function fetchSuggestedPassword() {
+            try {
+                const response = await fetch("{{ url_for('suggest_password') }}");
+                const data = await response.json();
+                if (data.suggested_password) {
+                    const newPassInput = document.getElementById("new_password");
+                    const confirmPassInput = document.getElementById("confirm_password");
+                    
+                    newPassInput.type = "text";
+                    confirmPassInput.type = "text";
+                    
+                    newPassInput.value = data.suggested_password;
+                    confirmPassInput.value = data.suggested_password;
+                }
+            } catch (err) {
+                console.error("خطا در دریافت رمز پیشنهادی:", err);
+            }
+        }
+    </script>
 </body>
 </html>
