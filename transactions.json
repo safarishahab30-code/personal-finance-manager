@@ -5,5 +5,21 @@
         "amount": 1000000.0,
         "description": "بدون توضیح",
         "date": "2026-08-08 20:00:34"
+    },
+    {
+        "id": 2,
+        "username": "asal",
+        "description": "كافه",
+        "amount": 1500000.0,
+        "type": "expense",
+        "category": "خوراک"
+    },
+    {
+        "id": 3,
+        "username": "asal",
+        "description": "گل مهري",
+        "amount": 2000000.0,
+        "type": "income",
+        "category": "حقوق"
     }
 ]

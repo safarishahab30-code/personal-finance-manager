@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>ویرایش تراکنش</title>
+</head>
+<body>
+    <h2>ویرایش تراکنش</h2>
+    <form method="POST">
+        <label>توضیحات:</label>
+        <input type="text" name="description" value="{{ transaction.description }}" required><br><br>
+        
+        <label>مبلغ:</label>
+        <input type="number" step="any" name="amount" value="{{ transaction.amount }}" required><br><br>
+        
+        <label>نوع:</label>
+        <select name="type">
+            <option value="expense" {% if transaction.type == 'expense' %}selected{% endif %}>هزینه</option>
+            <option value="income" {% if transaction.type == 'income' %}selected{% endif %}>درآمد</option>
+        </select><br><br>
+        
+        <label>دسته‌بندی:</label>
+        <input type="text" name="category" value="{{ transaction.category }}"><br><br>
+        
+        <button type="submit">ذخیره تغییرات</button>
+        <a href="{{ url_for('dashboard') }}">انصراف</a>
+    </form>
+</body>
+</html>

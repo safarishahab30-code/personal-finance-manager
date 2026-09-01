@@ -45,5 +45,14 @@
         "security_answer": "b8f7a33151b32e32fad3dd708c0e4fb0$d6ed7177b4e8517d14053860924865cc45685cd9d31686905757a3731a344dfe",
         "created_at": "2026-08-31T01:43:29.347681",
         "updated_at": "2026-08-31T02:17:54.199451"
+    },
+    {
+        "username": "sharokh",
+        "password": "70093972fe7676af25c7e52005a6be2a$c683b2c605980f55f022661a72e56f8e964451b322a572ee6c7ffe219bee7c28",
+        "role": "user",
+        "security_question": "city",
+        "security_answer": "8d59fede4a46be87b3f885ec56f78612$67757b07789988b9a7d41cfae044a684ee99f0b0cece8c9cd786f989b7cb5086",
+        "created_at": "2026-08-31T15:12:26.455756",
+        "updated_at": "2026-08-31T15:12:26.455756"
     }
 ]

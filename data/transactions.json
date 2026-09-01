@@ -84,5 +84,25 @@
         "account": "کارت اصلی",
         "note": "تیر ماه",
         "date": "2026-08-31 02:22:14"
+    },
+    {
+        "id": "56a6f47d",
+        "username": "sharokh",
+        "type": "expense",
+        "amount": 15000000.0,
+        "category": "خوراک",
+        "account": "کارت اصلی",
+        "note": "",
+        "date": "2026-08-31 16:13:36"
+    },
+    {
+        "id": "a6f3354f",
+        "username": "sharokh",
+        "type": "income",
+        "amount": 1800000.0,
+        "category": "حمل و نقل",
+        "account": "کارت اصلی",
+        "note": "",
+        "date": "2026-08-31 16:51:25"
     }
 ]
