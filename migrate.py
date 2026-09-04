@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import json
 import os
 from datetime import datetime
@@ -58,6 +59,39 @@ def migrate():
     conn.commit()
     conn.close()
     print(farsi("عملیات مهاجرت داده‌ها کامل شد."))
+=======
+from data.database import Database
+
+def migrate():
+    db = Database()
+    with db.get_connection() as conn:
+        cursor = conn.cursor()
+        print("Starting migration...")
+        
+        # اضافه کردن نقش کاربری
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"')
+            print("Role column added.")
+        except Exception as e:
+            print(f"Role column might already exist: {e}")
+
+        # اضافه کردن سوال امنیتی
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN security_question TEXT')
+            print("Security question column added.")
+        except Exception as e:
+            print(f"Security question might already exist: {e}")
+
+        # اضافه کردن پاسخ امنیتی (هش شده)
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN security_answer_hash TEXT')
+            print("Security answer column added.")
+        except Exception as e:
+            print(f"Security answer might already exist: {e}")
+
+        conn.commit()
+        print("Migration completed successfully.")
+>>>>>>> 896375e (Update project)
 
 if __name__ == "__main__":
     migrate()

@@ -133,9 +133,146 @@ def login():
     return render_template("login.html")
 
 @app.route("/logout")
+from datetime import datetime
+from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from werkzeug.security import generate_password_hash, check_password_hash
+from data.database import Database
+from auth import verify_password
+
+def farsi(text):
+    return str(text)
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'shahab_finance_secure_key_2026')
+
+db = Database()
+
+def verify_user_password(password, stored_hash):
+    """
+    بررسی رمز عبور با پشتیبانی از هر دو استاندارد:
+    1. استاندارد جدید Werkzeug (scrypt/pbkdf2)
+    2. استاندارد قدیمی (Custom/scrypt قدیمی)
+    """
+    if not password or not stored_hash:
+        return False
+    
+    # تلاش اول: استاندارد مدرن Werkzeug
+    try:
+        if check_password_hash(stored_hash, password):
+            return True
+    except Exception:
+        pass
+
+    # تلاش دوم: استاندارد قدیمی موجود در auth.py
+    try:
+        return verify_password(password, stored_hash)
+    except Exception:
+        return False
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash(farsi('لطفاً ابتدا وارد حساب کاربری خود شوید.'), 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def generate_username_suggestion(base_username):
+    random_digits = ''.join(random.choices(string.digits, k=3))
+    return f"{base_username}_{random_digits}"
+
+@app.route('/')
+def index():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+
+        print(farsi('تلاش برای ثبت‌نام کاربر:'), username)
+
+        if not username or not password:
+            flash(farsi('لطفاً نام کاربری و رمز عبور را وارد کنید.'), 'danger')
+            return render_template('register.html')
+
+        if password != confirm_password:
+            flash(farsi('رمز عبور با تکرار آن مطابقت ندارد.'), 'danger')
+            return render_template('register.html')
+
+        if len(password) < 6:
+            flash(farsi('رمز عبور باید حداقل ۶ کاراکتر باشد.'), 'danger')
+            return render_template('register.html')
+
+        existing_user = db.get_user_by_username(username)
+        if existing_user:
+            suggestion = generate_username_suggestion(username)
+            flash(farsi(f'نام کاربری تکراری است. پیشنهاد: {suggestion}'), 'warning')
+            return render_template('register.html', suggested_username=suggestion)
+
+        hashed_password = generate_password_hash(password)
+        created = db.create_user(username=username, password_hash=hashed_password, role='user')
+
+        if created:
+            flash(farsi('ثبت‌نام با موفقیت انجام شد. اکنون وارد شوید.'), 'success')
+            return redirect(url_for('login'))
+        else:
+            flash(farsi('خطا در ثبت‌نام. دوباره تلاش کنید.'), 'danger')
+
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+
+        user = db.get_user_by_username(username)
+        
+        print(farsi('تلاش برای ورود با نام کاربری:'), username)
+        print(farsi('کاربر در دیتابیس یافت شد:'), bool(user))
+
+        if user and verify_user_password(password, user['password_hash']):
+            stored_hash = user['password_hash']
+
+            # ارتقای خودکار هش قدیمی پس از ورود موفق
+            if not stored_hash.startswith(('scrypt:', 'pbkdf2:')):
+                upgraded_hash = generate_password_hash(password)
+                db.update_password(
+                    user_id=user['id'],
+                    new_password_hash=upgraded_hash,
+                    updated_at=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                )
+                print(farsi('هش رمز عبور کاربر'), username, f'{farsi("با موفقیت ارتقا یافت.")}')
+
+            session.clear()
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['role'] = user['role'] if 'role' in user.keys() else 'user'
+            flash(farsi(f'خوش آمدید، {user["username"]}!'), 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash(farsi('نام کاربری یا رمز عبور اشتباه است.'), 'danger')
+
+    return render_template('login.html')
+
+@app.route('/logout')
 def logout():
     username = session.get("username", "ناشناس")
     session.clear()
+<<<<<<< HEAD
     logging.info(f"کاربر خارج شد: {username}")
     print(farsi(f"خروج کاربر: {username}"))
     return redirect(url_for("login"))
@@ -425,3 +562,148 @@ def delete_budget(id):
 
 if __name__ == "__main__":
     app.run(debug=True)
+=======
+    flash(farsi('با موفقیت خارج شدید.'), 'info')
+    return redirect(url_for('login'))
+
+@app.route('/forgot-password')
+def forgot_password():
+    return render_template('forgot_password.html')
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    user_id = session['user_id']
+    transactions = db.get_transactions_by_user(user_id) or []
+
+    total_income = sum(t['amount'] for t in transactions if t.get('type') == 'income')
+    total_expense = sum(t['amount'] for t in transactions if t.get('type') == 'expense')
+    balance = total_income - total_expense
+
+    return render_template(
+        'dashboard.html',
+        username=session.get('username'),
+        transactions=transactions,
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=balance
+    )
+
+@app.route('/transaction/add', methods=['POST'])
+@login_required
+def add_transaction():
+    user_id = session['user_id']
+    title = request.form.get('title', '').strip()
+    amount_str = request.form.get('amount', '').strip()
+    category = request.form.get('category', '').strip()
+    trans_type = request.form.get('type', '').strip()
+    date_str = request.form.get('date', '').strip()
+
+    if not title or not amount_str or not category or trans_type not in ['income', 'expense']:
+        flash(farsi('اطلاعات تراکنش ناقص است.'), 'danger')
+        return redirect(url_for('dashboard'))
+
+    try:
+        amount = float(amount_str)
+        if amount <= 0:
+            raise ValueError()
+    except ValueError:
+        flash(farsi('مبلغ باید یک عدد مثبت باشد.'), 'danger')
+        return redirect(url_for('dashboard'))
+
+    if not date_str:
+        date_str = datetime.now().strftime('%Y-%m-%d')
+
+    db.add_transaction(
+        user_id=user_id,
+        title=title,
+        amount=amount,
+        category=category,
+        transaction_type=trans_type,
+        date=date_str
+    )
+    flash(farsi('تراکنش با موفقیت ثبت شد.'), 'success')
+    return redirect(url_for('dashboard'))
+
+@app.route('/transaction/delete/<int:transaction_id>', methods=['POST'])
+@login_required
+def delete_transaction(transaction_id):
+    user_id = session['user_id']
+    success = db.delete_transaction(transaction_id=transaction_id, user_id=user_id)
+    if success:
+        flash(farsi('تراکنش با موفقیت حذف شد.'), 'info')
+    else:
+        flash(farsi('خطا در حذف تراکنش یا دسترسی غیرمجاز.'), 'danger')
+    return redirect(url_for('dashboard'))
+
+@app.route('/profile')
+@login_required
+def profile():
+    user = db.get_user_by_id(session['user_id'])
+    return render_template('profile.html', user=user)
+
+@app.route('/profile/change-username', methods=['POST'])
+@login_required
+def change_username():
+    new_username = request.form.get('new_username', '').strip()
+    user_id = session['user_id']
+
+    if not new_username:
+        flash(farsi('نام کاربری جدید نمی‌تواند خالی باشد.'), 'danger')
+        return redirect(url_for('profile'))
+
+    if new_username == session.get('username'):
+        flash(farsi('نام کاربری جدید نمی‌تواند با نام قبلی یکسان باشد.'), 'warning')
+        return redirect(url_for('profile'))
+
+    existing = db.get_user_by_username(new_username)
+    if existing:
+        suggestion = generate_username_suggestion(new_username)
+        flash(farsi(f'این نام کاربری از قبل وجود دارد. پیشنهاد ما: {suggestion}'), 'warning')
+        return redirect(url_for('profile'))
+
+    updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    success = db.update_username(user_id=user_id, new_username=new_username, updated_at=updated_at)
+
+    if success:
+        session['username'] = new_username
+        flash(farsi('نام کاربری با موفقیت تغییر کرد.'), 'success')
+    else:
+        flash(farsi('خطا در تغییر نام کاربری.'), 'danger')
+
+    return redirect(url_for('profile'))
+
+@app.route('/profile/change-password', methods=['POST'])
+@login_required
+def change_password():
+    current_password = request.form.get('current_password', '').strip()
+    new_password = request.form.get('new_password', '').strip()
+    confirm_new_password = request.form.get('confirm_new_password', '').strip()
+    user_id = session['user_id']
+
+    user = db.get_user_by_id(user_id)
+    if not user or not verify_user_password(current_password, user['password_hash']):
+        flash(farsi('رمز عبور فعلی نادرست است.'), 'danger')
+        return redirect(url_for('profile'))
+
+    if len(new_password) < 6:
+        flash(farsi('رمز عبور جدید آسان است! حداقل باید ۶ کاراکتر باشد.'), 'warning')
+        return redirect(url_for('profile'))
+
+    if new_password != confirm_new_password:
+        flash(farsi('تکرار رمز عبور جدید یکسان نیست.'), 'danger')
+        return redirect(url_for('profile'))
+
+    new_hash = generate_password_hash(new_password)
+    updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    success = db.update_password(user_id=user_id, new_password_hash=new_hash, updated_at=updated_at)
+
+    if success:
+        flash(farsi('رمز عبور با موفقیت بروزرسانی شد.'), 'success')
+    else:
+        flash(farsi('خطا در بروزرسانی رمز عبور.'), 'danger')
+
+    return redirect(url_for('profile'))
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
