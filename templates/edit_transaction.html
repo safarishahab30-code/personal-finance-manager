@@ -2,28 +2,108 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ویرایش تراکنش</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        :root {
+            --bg-dark: #0b0914;
+            --bg-card: rgba(255, 255, 255, 0.065);
+            --border: rgba(255, 255, 255, 0.12);
+            --purple: #a855f7;
+            --pink: #ec4899;
+            --text: #f8f7ff;
+            --muted: #aaa5bb;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Vazirmatn', Tahoma, sans-serif; }
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 85% 10%, rgba(168, 85, 247, 0.20), transparent 35%), var(--bg-dark);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(18px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h2 { margin-bottom: 20px; font-size: 20px; text-align: center; }
+        .input-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+        input, select {
+            width: 100%;
+            height: 44px;
+            padding: 0 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            outline: none;
+        }
+        select option { background: #181522; }
+        .btn-group { display: flex; gap: 10px; margin-top: 24px; }
+        .btn-submit {
+            flex: 2;
+            height: 44px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--pink), var(--purple));
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-cancel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: var(--muted);
+            font-size: 13px;
+        }
+    </style>
 </head>
 <body>
-    <h2>ویرایش تراکنش</h2>
-    <form method="POST">
-        <label>توضیحات:</label>
-        <input type="text" name="description" value="{{ transaction.description }}" required><br><br>
-        
-        <label>مبلغ:</label>
-        <input type="number" step="any" name="amount" value="{{ transaction.amount }}" required><br><br>
-        
-        <label>نوع:</label>
-        <select name="type">
-            <option value="expense" {% if transaction.type == 'expense' %}selected{% endif %}>هزینه</option>
-            <option value="income" {% if transaction.type == 'income' %}selected{% endif %}>درآمد</option>
-        </select><br><br>
-        
-        <label>دسته‌بندی:</label>
-        <input type="text" name="category" value="{{ transaction.category }}"><br><br>
-        
-        <button type="submit">ذخیره تغییرات</button>
-        <a href="{{ url_for('dashboard') }}">انصراف</a>
-    </form>
+    <div class="card">
+        <h2>ویرایش تراکنش</h2>
+        <form action="{{ url_for('edit_transaction', id=transaction['id']) }}" method="POST">
+            <div class="input-group">
+                <label>مبلغ (تومان)</label>
+                <input type="number" name="amount" value="{{ transaction['amount'] }}" required min="1">
+            </div>
+            <div class="input-group">
+                <label>عنوان / توضیحات</label>
+                <input type="text" name="title" value="{{ transaction['title'] }}" required>
+            </div>
+            <div class="input-group">
+                <label>دسته‌بندی</label>
+                <input type="text" name="category" value="{{ transaction['category'] }}" list="categories" required>
+                <datalist id="categories">
+                    <option value="خوراک"><option value="اجاره"><option value="حقوق"><option value="دستمزد"><option value="تفریح"><option value="حمل و نقل"><option value="خرید"><option value="قبوض"><option value="سایر">
+                </datalist>
+            </div>
+            <div class="input-group">
+                <label>نوع تراکنش</label>
+                <select name="type" required>
+                    <option value="expense" {% if transaction['type'] == 'expense' %}selected{% endif %}>هزینه</option>
+                    <option value="income" {% if transaction['type'] == 'income' %}selected{% endif %}>درآمد</option>
+                </select>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn-submit">ذخیره تغییرات</button>
+                <a href="{{ url_for('dashboard') }}" class="btn-cancel">انصراف</a>
+            </div>
+        </form>
+    </div>
 </body>
 </html>

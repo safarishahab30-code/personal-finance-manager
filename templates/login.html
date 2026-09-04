@@ -5,249 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود به سامانه | Personal Finance</title>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Vazirmatn', sans-serif;
-        }
-
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #06030e;
-            overflow: hidden;
-            position: relative;
-            padding: 20px;
-        }
-
-        /* اورب‌های نورانی پس‌زمینه (Background Orbs) */
-        .bg-glow-1 {
-            position: absolute;
-            width: 450px;
-            height: 450px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.45) 0%, rgba(139, 92, 246, 0) 70%);
-            top: -100px;
-            right: -100px;
-            filter: blur(60px);
-            animation: pulse 8s ease-in-out infinite alternate;
-            z-index: 1;
-        }
-
-        .bg-glow-2 {
-            position: absolute;
-            width: 420px;
-            height: 420px;
-            background: radial-gradient(circle, rgba(236, 72, 153, 0.35) 0%, rgba(236, 72, 153, 0) 70%);
-            bottom: -80px;
-            left: -80px;
-            filter: blur(60px);
-            animation: pulse 6s ease-in-out infinite alternate-reverse;
-            z-index: 1;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(0.9) translate(0, 0); opacity: 0.7; }
-            100% { transform: scale(1.15) translate(30px, 30px); opacity: 1; }
-        }
-
-        /* کانتینر با شیپ خاص و حاشیه نئونی گرادیانی */
-        .card-wrapper {
-            position: relative;
-            padding: 2px;
-            border-radius: 36px 12px 36px 12px;
-            background: linear-gradient(135deg, rgba(236, 72, 153, 0.9), rgba(139, 92, 246, 0.3), rgba(6, 182, 212, 0.8));
-            box-shadow: 0 0 45px rgba(139, 92, 246, 0.25),
-                        0 25px 60px rgba(0, 0, 0, 0.8);
-            z-index: 2;
-            width: 100%;
-            max-width: 420px;
-            transition: transform 0.3s ease;
-        }
-
-        .card-wrapper:hover {
-            transform: translateY(-3px);
-        }
-
-        /* لایه داخلی شیشه‌ای کارت */
-        .futuristic-card {
-            background: rgba(14, 10, 26, 0.85);
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
-            border-radius: 34px 10px 34px 10px;
-            padding: 45px 35px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* خط نوری بالای کارت */
-        .futuristic-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 15%;
-            right: 15%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #ec4899, #8b5cf6, transparent);
-        }
-
-        .brand-icon {
-            width: 58px;
-            height: 58px;
-            margin: 0 auto 16px;
-            border-radius: 18px;
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.2));
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
-        }
-
-        .brand-icon svg {
-            width: 28px;
-            height: 28px;
-            fill: url(#icon-grad);
-        }
-
-        .auth-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .auth-header h2 {
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            margin-bottom: 6px;
-        }
-
-        .auth-header p {
-            color: #94a3b8;
-            font-size: 13px;
-            font-weight: 400;
-        }
-
-        .error-box {
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid rgba(239, 68, 68, 0.4);
-            color: #fca5a5;
-            padding: 11px 14px;
-            border-radius: 14px;
-            margin-bottom: 22px;
-            font-size: 13px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-            text-align: right;
-        }
-
-        .form-group label {
-            display: block;
-            color: #cbd5e1;
-            font-size: 13px;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .input-box {
-            position: relative;
-        }
-
-        .input-box input {
-            width: 100%;
-            padding: 14px 18px;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(255, 255, 255, 0.03);
-            color: #ffffff;
-            font-size: 14px;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-
-        .input-box input::placeholder {
-            color: rgba(255, 255, 255, 0.25);
-            font-size: 13px;
-        }
-
-        .input-box input:focus {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: #ec4899;
-            box-shadow: 0 0 20px rgba(236, 72, 153, 0.35);
-        }
-
-        /* دکمه اکشن نئونی مدرن */
-        .btn-action {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 16px;
-            background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
-            color: #ffffff;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 25px rgba(236, 72, 153, 0.35);
-            margin-top: 12px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-action:hover {
-            box-shadow: 0 12px 30px rgba(236, 72, 153, 0.55);
-            filter: brightness(1.1);
-        }
-
-        .btn-action:active {
-            transform: scale(0.98);
-        }
-
-        .auth-links {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 12px;
-            margin-top: 28px;
-            font-size: 13px;
-        }
-
-        .auth-links a {
-            color: #a78bfa;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .auth-links a:hover {
-            color: #f472b6;
-            text-shadow: 0 0 10px rgba(244, 114, 182, 0.6);
-        }
-
-        .auth-links span {
-            color: rgba(255, 255, 255, 0.15);
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
 </head>
 <body>
 
-    <!-- المان‌های نورانی گرادیانی پس‌زمینه -->
     <div class="bg-glow-1"></div>
     <div class="bg-glow-2"></div>
 
-    <!-- کانتینر اصلی کارت با شیپ نامتقارن مدرن و نئونی -->
     <div class="card-wrapper">
         <div class="futuristic-card">
 
-            <!-- آیکون برند نئونی -->
             <div class="brand-icon">
                 <svg viewBox="0 0 24 24">
                     <defs>
@@ -265,11 +32,15 @@
                 <p>سامانه مدیریت مالی شخصی</p>
             </div>
 
-            {% if error %}
-                <div class="error-box">
-                    {{ error }}
-                </div>
-            {% endif %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="{% if category == 'success' %}success-box{% else %}error-box{% endif %}">
+                    {{ message }}
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
 
             <form method="POST" action="{{ url_for('login') }}">
                 <div class="form-group">
@@ -290,7 +61,7 @@
             </form>
 
             <div class="auth-links">
-                <a href="{{ url_for('forgot_password') }}">فراموشی رمز عبور</a>
+                <a href="#">فراموشی رمز عبور</a>
                 <span>•</span>
                 <a href="{{ url_for('register') }}">ایجاد حساب کاربری</a>
             </div>

@@ -1,49 +1,66 @@
 import sqlite3
 from datetime import datetime
 
-class Database:
-    def __init__(self, db_path="data/finance.db"):
-        self.db_path = db_path
-        self.init_db()
+def farsi(text):
+    return text
 
-    def get_connection(self):
-        """ایجاد یک اتصال جدید به دیتابیس"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # اجازه می‌دهد نتایج مثل دیکشنری دسترسی داشته باشند
-        return conn
+DB_NAME = "finance.db"
 
-    def init_db(self):
-        """ایجاد جداول اصلی در صورت عدم وجود"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            # ۱. جدول کاربران
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    email TEXT,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
+def get_connection():
+    """ایجاد اتصال به دیتابیس با خروجی به شکل دیکشنری و فعال‌سازی کلید خارجی"""
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn
 
-            # ۲. جدول تراکنش‌ها (با ارتباط با جدول کاربران)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS transactions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    type TEXT CHECK(type IN ('income', 'expense')) NOT NULL,
-                    amount REAL NOT NULL,
-                    category TEXT NOT NULL,
-                    note TEXT,
-                    account TEXT,
-                    date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                )
-            ''')
-            
-            conn.commit()
+def init_db():
+    """ایجاد خودکار جداول کاربران، تراکنش‌ها و بودجه‌ها در صورت عدم وجود"""
+    conn = get_connection()
+    cursor = conn.cursor()
 
-# ایجاد یک نمونه واحد از دیتابیس برای استفاده در کل پروژه
-db = Database()
+    # جدول کاربران
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+    """)
+
+    # جدول تراکنش‌ها
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            amount REAL NOT NULL,
+            type TEXT NOT NULL,
+            category TEXT NOT NULL,
+            date TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+    # جدول بودجه‌بندی (Budget Management)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            category TEXT NOT NULL,
+            limit_amount REAL NOT NULL,
+            month TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            UNIQUE(user_id, category, month)
+        );
+    """)
+    
+    conn.commit()
+    conn.close()
+
+if __name__ == "__main__":
+    init_db()
+    print(farsi("دیتابیس و جداول با موفقیت ساخته شدند."))

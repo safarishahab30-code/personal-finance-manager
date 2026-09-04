@@ -1,285 +1,427 @@
-import json
 import os
+import re
 import random
+import logging
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from werkzeug.security import generate_password_hash, check_password_hash
+from data.database import get_connection, init_db
+
+def farsi(text):
+    return text
+
+logging.basicConfig(
+    filename='app.log',
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s]: %(message)s',
+    encoding='utf-8'
+)
 
 app = Flask(__name__)
-app.secret_key = "secret_finance_key"
+app.secret_key = "finance_secret_key_shahab"
 
-USERS_FILE = "users.json"
-TRANSACTIONS_FILE = "transactions.json"
+# راه‌اندازی اولیه جداول در صورت عدم وجود
+init_db()
 
 def normalize_username(username):
-    """حذف فاصله‌های اضافی و یکسان‌سازی حروف انگلیسی"""
+    """حذف فاصله‌های اضافی و استانداردسازی حروف"""
     return str(username or "").strip().lower()
 
-def load_data(file_path):
-    if not os.path.exists(file_path):
-        return []
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
+def check_password_strength(password):
+    """بررسی الزامات امنیتی رمز عبور"""
+    if len(password) < 8:
+        return False, "طول رمز باید حداقل ۸ کاراکتر باشد."
+    if not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+        return False, "رمز باید ترکیبی از حروف و اعداد باشد."
+    return True, "رمز عبور تایید شد."
 
-def save_data(file_path, data):
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+def generate_username_suggestions(base_username, count=3):
+    """تولید نام‌های کاربری پیشنهادی در صورت تکراری بودن"""
+    base = normalize_username(base_username)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT username FROM users")
+    existing_users = {row["username"] for row in cursor.fetchall()}
+    conn.close()
 
-def generate_username_suggestions(base_username, existing_usernames, count=3):
-    """تولید پیشنهادات تصادفی در صورت تکراری بودن نام کاربری"""
     suggestions = []
     attempts = 0
-    while len(suggestions) < count and attempts < 25:
+    while len(suggestions) < count and attempts < 30:
         attempts += 1
-        suffix = random.randint(10, 999)
-        candidate = f"{base_username}_{suffix}"
-        if candidate not in existing_usernames and candidate not in suggestions:
-            suggestions.append(candidate)
-    return suggestions
-
-@app.route("/")
-def home():
-    if "user" in session:
-        return redirect(url_for("dashboard"))
-    return redirect(url_for("login"))
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form.get("username", "")
-        password = request.form.get("password", "")
-        norm_user = normalize_username(username)
-        
-        users = load_data(USERS_FILE)
-        user_match = next((u for u in users if normalize_username(u.get("username")) == norm_user), None)
-        
-        if user_match and user_match.get("password") == password:
-            session["user"] = norm_user
-            return redirect(url_for("dashboard"))
-        return render_template("login.html", error="نام کاربری یا رمز عبور اشتباه است.")
-    return render_template("login.html")
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        username = request.form.get("username", "")
-        password = request.form.get("password", "")
-        norm_user = normalize_username(username)
-        
-        if not norm_user or not password:
-            return render_template("register.html", error="لطفاً تمام فیلدها را پر کنید.")
-            
-        users = load_data(USERS_FILE)
-        if any(normalize_username(u.get("username")) == norm_user for u in users):
-            return render_template("register.html", error="این نام کاربری قبلاً ثبت شده است.")
-            
-        users.append({"username": norm_user, "password": password})
-        save_data(USERS_FILE, users)
-        session["user"] = norm_user
-        return redirect(url_for("dashboard"))
-    return render_template("register.html")
-
-@app.route("/forgot_password", methods=["GET", "POST"])
-def forgot_password():
-    if request.method == "POST":
-        username = normalize_username(request.form.get("username", ""))
-        users = load_data(USERS_FILE)
-        user_match = next((u for u in users if normalize_username(u.get("username")) == username), None)
-        
-        if user_match:
-            return render_template("forgot_password.html", message="درخواست بازیابی ثبت شد.")
-        return render_template("forgot_password.html", error="کاربری با این مشخصات یافت نشد.")
-        
-    return render_template("forgot_password.html")
-
-@app.route("/dashboard")
-def dashboard():
-    if "user" not in session:
-        return redirect(url_for("login"))
-        
-    current_user = session["user"]
-    all_transactions = load_data(TRANSACTIONS_FILE)
-    
-    # فیلتر تراکنش‌های مربوط به کاربر لاگین‌شده
-    user_txs = [
-        tx for tx in all_transactions 
-        if normalize_username(tx.get("username")) == current_user
-    ]
-    
-    total_income = sum(float(tx.get("amount", 0)) for tx in user_txs if tx.get("type") == "income")
-    total_expense = sum(float(tx.get("amount", 0)) for tx in user_txs if tx.get("type") == "expense")
-    balance = total_income - total_expense
-    
-    return render_template(
-        "dashboard.html",
-        user=current_user,
-        transactions=user_txs,
-        total_income=total_income,
-        total_expense=total_expense,
-        balance=balance
-    )
-
-@app.route("/add_transaction", methods=["POST"])
-def add_transaction():
-    if "user" not in session:
-        return redirect(url_for("login"))
-        
-    current_user = session["user"]
-    description = request.form.get("description", "").strip()
-    amount = float(request.form.get("amount", 0))
-    tx_type = request.form.get("type", "expense")
-    category = request.form.get("category", "عمومی").strip()
-    
-    all_transactions = load_data(TRANSACTIONS_FILE)
-    new_tx = {
-        "id": len(all_transactions) + 1,
-        "username": current_user,
-        "description": description,
-        "amount": amount,
-        "type": tx_type,
-        "category": category
-    }
-    all_transactions.append(new_tx)
-    save_data(TRANSACTIONS_FILE, all_transactions)
-    
-    return redirect(url_for("dashboard"))
-
-@app.route("/edit_transaction/<int:id>", methods=["GET", "POST"])
-def edit_transaction(id):
-    if "user" not in session:
-        return redirect(url_for("login"))
-        
-    current_user = session["user"]
-    all_transactions = load_data(TRANSACTIONS_FILE)
-    tx = next((t for t in all_transactions if t.get("id") == id and normalize_username(t.get("username")) == current_user), None)
-    
-    if not tx:
-        return redirect(url_for("dashboard"))
-        
-    if request.method == "POST":
-        tx["description"] = request.form.get("description", "").strip()
-        tx["amount"] = float(request.form.get("amount", 0))
-        tx["type"] = request.form.get("type", "expense")
-        tx["category"] = request.form.get("category", "عمومی").strip()
-        save_data(TRANSACTIONS_FILE, all_transactions)
-        return redirect(url_for("dashboard"))
-        
-    return render_template("edit_transaction.html", transaction=tx)
-
-@app.route("/delete_transaction/<int:id>", methods=["POST", "GET"])
-def delete_transaction(id):
-    if "user" not in session:
-        return redirect(url_for("login"))
-
-    current_user = session["user"]
-    all_transactions = load_data(TRANSACTIONS_FILE)
-
-    # حذف تراکنش فقط در صورتی که متعلق به کاربر جاری باشد
-    all_transactions = [
-        tx for tx in all_transactions
-        if not (tx.get("id") == id and normalize_username(tx.get("username")) == current_user)
-    ]
-
-    save_data(TRANSACTIONS_FILE, all_transactions)
-    return redirect(url_for("dashboard"))
-
-def generate_username_suggestions(base_username):
-    base = normalize_username(base_username)
-    all_users = load_data(USERS_FILE)
-    existing_users = {normalize_username(u.get("username", "")) for u in all_users}
-    suggestions = []
-    
-    while len(suggestions) < 3:
-        candidate = f"{base}{random.randint(10, 999)}"
+        candidate = f"{base}_{random.randint(100, 999)}"
         if candidate not in existing_users and candidate not in suggestions:
             suggestions.append(candidate)
     return suggestions
 
-@app.route("/profile/change-username", methods=["GET", "POST"])
-def change_username():
-    if "user" not in session:
-        return redirect(url_for("login"))
+# --- مسیرهای اصلی و احراز هویت ---
 
-    current_user = session["user"]
-    users = load_data(USERS_FILE)
-    error = None
+@app.route("/")
+def home():
+    if "user_id" in session:
+        return redirect(url_for("dashboard"))
+    return redirect(url_for("login"))
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
     suggestions = []
-
     if request.method == "POST":
-        new_username = request.form.get("new_username", "").strip()
-        normalized_new = normalize_username(new_username)
+        username = normalize_username(request.form.get("username", ""))
+        password = request.form.get("password", "")
 
-        if not new_username:
-            error = "نام کاربری نمی‌تواند خالی باشد."
-        elif normalized_new == current_user:
-            error = "نام کاربری جدید با نام قبلی یکسان است."
-        elif any(normalize_username(u.get("username", "")) == normalized_new for u in users):
-            error = "این نام کاربری قبلاً ثبت شده است. پیشنهادهای ما:"
-            suggestions = generate_username_suggestions(new_username)
-        else:
-            # ۱. به‌روزرسانی کاربران + ثبت تاریخ ویرایش
-            for u in users:
-                if normalize_username(u.get("username", "")) == current_user:
-                    u["username"] = new_username
-                    u["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    break
-            save_data(USERS_FILE, users)
+        if not username or not password:
+            flash("لطفاً تمام فیلدها را پر کنید.", "warning")
+            return render_template("register.html", suggestions=suggestions)
 
-            # ۲. همگام‌سازی تراکنش‌های کاربر قبلی
-            transactions = load_data(TRANSACTIONS_FILE)
-            for tx in transactions:
-                if normalize_username(tx.get("username", "")) == current_user:
-                    tx["username"] = new_username
-            save_data(TRANSACTIONS_FILE, transactions)
+        is_strong, msg = check_password_strength(password)
+        if not is_strong:
+            flash(f"رمز عبور ضعیف است: {msg}", "danger")
+            return render_template("register.html", suggestions=suggestions)
 
-            # ۳. به‌روزرسانی سشن
-            session["user"] = normalized_new
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            conn.close()
+            suggestions = generate_username_suggestions(username)
+            flash("این نام کاربری قبلاً ثبت شده است. می‌توانید از نام‌های پیشنهادی استفاده کنید.", "warning")
+            return render_template("register.html", suggestions=suggestions)
+
+        hashed_password = generate_password_hash(password)
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        cursor.execute("""
+            INSERT INTO users (username, password_hash, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+        """, (username, hashed_password, now, now))
+        conn.commit()
+
+        cursor.execute("SELECT id, username FROM users WHERE username = ?", (username,))
+        new_user = cursor.fetchone()
+        conn.close()
+
+        session["user_id"] = new_user["id"]
+        session["username"] = new_user["username"]
+        logging.info(f"کاربر جدید ثبت نام کرد: {username}")
+        print(farsi(f"ثبت‌نام موفق: {username}"))
+        return redirect(url_for("dashboard"))
+
+    return render_template("register.html", suggestions=suggestions)
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = normalize_username(request.form.get("username", ""))
+        password = request.form.get("password", "")
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user and check_password_hash(user["password_hash"], password):
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            logging.info(f"ورود موفق کاربر: {username}")
+            print(farsi(f"ورود موفق: {username}"))
             return redirect(url_for("dashboard"))
+        else:
+            flash("نام کاربری یا رمز عبور اشتباه است.", "danger")
 
-    return render_template("change_username.html", current_username=current_user, error=error, suggestions=suggestions)
-
-
-def check_password_strength(password):
-    """
-    بررسی قدرت رمز عبور:
-    - حداقل ۸ کاراکتر
-    - شامل حروف بزرگ و کوچک
-    - شامل عدد
-    - شامل کاراکتر خاص (مانند @, #, $, etc.)
-    """
-    score = 0
-    if len(password) >= 8: score += 1
-    if re.search(r"[a-z]", password): score += 1
-    if re.search(r"[A-Z]", password): score += 1
-    if re.search(r"\d", password): score += 1
-    if re.search(r"[!@#$%^&*(),.?\":{}|<>]", password): score += 1
-    
-    # برگرداندن سطح قدرت
-    if score <= 2: return "ضعیف", "red"
-    if score <= 4: return "متوسط", "orange"
-    return "قوی", "green"
-
-@app.route("/profile/change-password", methods=["GET", "POST"])
-def change_password():
-    if "user" not in session:
-        return redirect(url_for("login"))
-
-    error = None
-    success = False
-
-    if request.method == "POST":
-        # فعلاً برای اینکه خطا ندهد، فرض می‌کنیم عملیات موفق است
-        # بعداً منطق اصلی را اینجا می‌نویسیم
-        success = True 
-
-    return render_template("change_password.html", error=error, success=success)
+    return render_template("login.html")
 
 @app.route("/logout")
 def logout():
-    session.pop("user", None)
+    username = session.get("username", "ناشناس")
+    session.clear()
+    logging.info(f"کاربر خارج شد: {username}")
+    print(farsi(f"خروج کاربر: {username}"))
     return redirect(url_for("login"))
+
+# --- مدیریت حساب کاربری ---
+
+@app.route("/change-username", methods=["GET", "POST"])
+def change_username():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    suggestions = []
+    if request.method == "POST":
+        new_username = normalize_username(request.form.get("new_username", ""))
+
+        if not new_username:
+            flash("نام کاربری نمی‌تواند خالی باشد.", "warning")
+            return render_template("change_username.html", suggestions=suggestions)
+
+        if new_username == session["username"]:
+            flash("نام کاربری جدید با نام فعلی یکسان است.", "info")
+            return redirect(url_for("dashboard"))
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE username = ?", (new_username,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            conn.close()
+            suggestions = generate_username_suggestions(new_username)
+            flash("این نام کاربری قبلاً رزرو شده است. از پیشنهادات زیر انتخاب کنید:", "warning")
+            return render_template("change_username.html", suggestions=suggestions)
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            UPDATE users SET username = ?, updated_at = ? WHERE id = ?
+        """, (new_username, now, session["user_id"]))
+        conn.commit()
+        conn.close()
+
+        old_name = session["username"]
+        session["username"] = new_username
+        logging.info(f"نام کاربری از {old_name} به {new_username} تغییر کرد.")
+        print(farsi(f"تغییر نام کاربری موفق: {old_name} -> {new_username}"))
+        flash("نام کاربری با موفقیت بروزرسانی شد.", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("change_username.html", suggestions=suggestions)
+
+@app.route("/change-password", methods=["GET", "POST"])
+def change_password():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT password_hash FROM users WHERE id = ?", (session["user_id"],))
+        user = cursor.fetchone()
+
+        if not user or not check_password_hash(user["password_hash"], current_password):
+            conn.close()
+            flash("رمز عبور فعلی نادرست است.", "danger")
+            return render_template("change_password.html")
+
+        is_strong, msg = check_password_strength(new_password)
+        if not is_strong:
+            conn.close()
+            flash(f"رمز عبور جدید ضعیف است: {msg}", "danger")
+            return render_template("change_password.html")
+
+        new_hash = generate_password_hash(new_password)
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?
+        """, (new_hash, now, session["user_id"]))
+        conn.commit()
+        conn.close()
+
+        logging.info(f"رمز عبور کاربر {session['username']} تغییر یافت.")
+        print(farsi(f"تغییر رمز موفق برای: {session['username']}"))
+        flash("رمز عبور با موفقیت تغییر کرد.", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("change_password.html")
+
+# --- داشبورد و مدیریت تراکنش‌ها ---
+
+@app.route("/dashboard")
+def dashboard():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+    current_month = datetime.now().strftime("%Y-%m")
+    
+    # دریافت فیلترها از URL
+    search_query = request.args.get("search", "").strip()
+    type_filter = request.args.get("type", "").strip()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # ۱. لیست تراکنش‌ها با فیلتر داینامیک
+    sql = "SELECT * FROM transactions WHERE user_id = ?"
+    params = [user_id]
+
+    if search_query:
+        sql += " AND title LIKE ?"
+        params.append(f"%{search_query}%")
+    
+    if type_filter:
+        sql += " AND type = ?"
+        params.append(type_filter)
+    
+    sql += " ORDER BY date DESC, id DESC"
+    
+    cursor.execute(sql, params)
+    transactions = [dict(row) for row in cursor.fetchall()]
+
+    # ۲. خلاصه درآمد، هزینه و مانده کل (ثابت)
+    cursor.execute("""
+        SELECT 
+            COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_income,
+            COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expense
+        FROM transactions
+        WHERE user_id = ?
+    """, (user_id,))
+    summary = cursor.fetchone()
+
+    total_income = summary["total_income"]
+    total_expense = summary["total_expense"]
+    balance = total_income - total_expense
+
+    # ۳. وضعیت بودجه‌بندی و ۴. نمودار (بخش‌های دیگر تغییری نکردند)
+    # ... [کد بودجه و نمودار را از فایل قبلی خودت کپی کن] ...
+
+    conn.close()
+
+    return render_template(
+        "dashboard.html",
+        username=session["username"],
+        transactions=transactions,
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=balance,
+        budgets_status=budgets_status, # اطمینان حاصل کن این متغیرها تعریف شده باشند
+        current_month=current_month,
+        chart_labels=chart_labels,
+        chart_data=chart_data
+    )
+@app.route("/add_transaction", methods=["POST"])
+def add_transaction():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    title = request.form.get("title", "").strip()
+    try:
+        amount = float(request.form.get("amount", 0))
+    except ValueError:
+        amount = 0.0
+
+    tx_type = request.form.get("type", "expense")
+    category = request.form.get("category", "").strip()
+    date = request.form.get("date") or datetime.now().strftime("%Y-%m-%d")
+    created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if title and amount > 0 and category:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO transactions (user_id, title, amount, type, category, date, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (session["user_id"], title, amount, tx_type, category, date, created_at))
+        conn.commit()
+        conn.close()
+        flash("تراکنش جدید با موفقیت ثبت شد.", "success")
+    else:
+        flash("عنوان، دسته‌بندی و مبلغ معتبر الزامی است.", "warning")
+
+    return redirect(url_for("dashboard"))
+
+@app.route('/transaction/edit/<int:id>', methods=['GET', 'POST'])
+def edit_transaction(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        try:
+            amount = float(request.form.get('amount', 0))
+        except ValueError:
+            amount = 0.0
+        category = request.form.get('category')
+        t_type = request.form.get('type')
+        
+        cursor.execute('''
+            UPDATE transactions 
+            SET title = ?, amount = ?, category = ?, type = ? 
+            WHERE id = ? AND user_id = ?
+        ''', (title, amount, category, t_type, id, session['user_id']))
+        conn.commit()
+        conn.close()
+        flash('تراکنش با موفقیت ویرایش شد.', 'success')
+        return redirect(url_for('dashboard'))
+    
+    cursor.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (id, session['user_id']))
+    transaction = cursor.fetchone()
+    conn.close()
+    
+    if not transaction:
+        flash('تراکنش مورد نظر یافت نشد.', 'danger')
+        return redirect(url_for('dashboard'))
+        
+    return render_template('edit_transaction.html', transaction=transaction)
+
+@app.route("/delete_transaction/<int:id>", methods=["POST", "GET"])
+def delete_transaction(id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM transactions WHERE id = ? AND user_id = ?", (id, session["user_id"]))
+    conn.commit()
+    conn.close()
+
+    flash("تراکنش با موفقیت حذف شد.", "info")
+    return redirect(url_for("dashboard"))
+
+# --- مسیرهای مدیریت بودجه ---
+
+@app.route("/set_budget", methods=["POST"])
+def set_budget():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    category = request.form.get("category", "").strip()
+    try:
+        limit_amount = float(request.form.get("limit_amount", 0))
+    except ValueError:
+        limit_amount = 0.0
+
+    month = request.form.get("month") or datetime.now().strftime("%Y-%m")
+    created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if not category or limit_amount <= 0:
+        flash("دسته‌بندی و سقف بودجه معتبر الزامی است.", "warning")
+        return redirect(url_for("dashboard"))
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO budgets (user_id, category, limit_amount, month, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, category, month) 
+        DO UPDATE SET limit_amount = excluded.limit_amount
+    """, (session["user_id"], category, limit_amount, month, created_at))
+    
+    conn.commit()
+    conn.close()
+    
+    flash(f"بودجه دسته‌بندی «{category}» با موفقیت ثبت شد.", "success")
+    return redirect(url_for("dashboard"))
+
+@app.route("/delete_budget/<int:id>", methods=["POST", "GET"])
+def delete_budget(id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM budgets WHERE id = ? AND user_id = ?", (id, session["user_id"]))
+    conn.commit()
+    conn.close()
+
+    flash("بودجه مورد نظر حذف شد.", "info")
+    return redirect(url_for("dashboard"))
 
 if __name__ == "__main__":
     app.run(debug=True)

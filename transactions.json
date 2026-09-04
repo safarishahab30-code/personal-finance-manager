@@ -21,5 +21,13 @@
         "amount": 2000000.0,
         "type": "income",
         "category": "حقوق"
+    },
+    {
+        "id": 4,
+        "username": "asal",
+        "description": "كتاب",
+        "amount": 800000.0,
+        "type": "expense",
+        "category": "خرید"
     }
 ]

@@ -7,7 +7,6 @@ import re
 import secrets
 import string
 from datetime import datetime
-
 from utils import farsi
 
 
@@ -56,6 +55,17 @@ WORDS = [
 
 SYMBOLS = "!@#$%&*?"
 
+from werkzeug.security import generate_password_hash
+
+def admin_reset_password(username, new_password):
+    # فرض بر این است که لیستی از کاربران را از users.json می‌خوانی
+    users = load_users() 
+    if username in users:
+        # رمز جدید هش شده و جایگزین می‌شود
+        users[username]['password'] = generate_password_hash(new_password)
+        save_users(users)
+        return True
+    return False
 
 def normalize_choice(value):
     return str(value).translate(EN_DIGITS).strip()
@@ -460,6 +470,10 @@ def change_username(
 
     return True
 
+def generate_temporary_password(length=10):
+    # ترکیب حروف بزرگ، کوچک، اعداد و علامت‌ها
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(secrets.choice(alphabet) for i in range(length))
 
 def change_password(current_user):
     print(farsi("\n--- تغییر رمز عبور ---"))

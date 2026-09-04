@@ -3,49 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ایجاد حساب جدید</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=2">
+    <title>ایجاد حساب کاربری | Personal Finance</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
 </head>
 <body>
-    <div class="auth-card">
-        <div class="auth-header">
-            <h2>ایجاد حساب جدید</h2>
-            <p>سامانه مدیریت مالی شخصی</p>
-        </div>
 
-        {% if error %}
-            <div style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; text-align: center;">
-                {{ error }}
-            </div>
-        {% endif %}
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
 
-        <form method="POST" action="{{ url_for('register') }}">
-            <div class="form-group">
-                <label for="username">نام کاربری</label>
-                <input type="text" id="username" name="username" placeholder="حداقل ۳ کاراکتر انگلیسی" required>
-            </div>
-            <div class="form-group">
-                <label for="password">رمز عبور</label>
-                <input type="password" id="password" name="password" placeholder="حداقل ۸ کاراکتر" required>
-            </div>
-            <div class="form-group">
-                <label for="security_question">سوال امنیتی</label>
-                <select id="security_question" name="security_question" required>
-                    <option value="book">نام اولین کتابی که خواندید چیست؟</option>
-                    <option value="city">شهر محل تولد شما کجاست؟</option>
-                    <option value="school">نام اولین مدرسه شما چیست؟</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="security_answer">پاسخ سوال امنیتی</label>
-                <input type="text" id="security_answer" name="security_answer" placeholder="پاسخ امنیتی" required>
-            </div>
-            <button type="submit" class="btn-submit">ثبت‌نام</button>
-        </form>
+    <div class="card-wrapper">
+        <div class="futuristic-card">
 
-        <div class="auth-links">
-            <a href="{{ url_for('login') }}">ورود به حساب کاربری</a>
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24">
+                    <defs>
+                        <linearGradient id="icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#ec4899" />
+                            <stop offset="100%" stop-color="#8b5cf6" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14.5h-2v-2h2v2zm0-4h-2V7h2v5.5z"/>
+                </svg>
+            </div>
+
+            <div class="auth-header">
+                <h2>ایجاد حساب جدید</h2>
+                <p>سامانه مدیریت مالی شخصی</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="{% if category == 'success' %}success-box{% else %}error-box{% endif %}">
+                    {{ message }}
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('register') }}">
+                <div class="form-group">
+                    <label for="username">نام کاربری</label>
+                    <div class="input-box">
+                        <input type="text" id="username" name="username" placeholder="نام کاربری دلخواه را وارد کنید" required autocomplete="username">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">رمز عبور</label>
+                    <div class="input-box">
+                        <input type="password" id="password" name="password" placeholder="رمز عبور قوی وارد کنید" required autocomplete="new-password">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-action">ثبت‌نام در سامانه</button>
+            </form>
+
+            <div class="auth-links">
+                <a href="{{ url_for('login') }}">حساب کاربری دارید؟ ورود</a>
+            </div>
+
         </div>
     </div>
+
 </body>
 </html>

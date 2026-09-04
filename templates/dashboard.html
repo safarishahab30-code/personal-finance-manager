@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>داشبورد مدیریت مالی</title>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-dark: #0b0914;
@@ -14,6 +14,7 @@
             --purple: #a855f7;
             --pink: #ec4899;
             --green: #22c55e;
+            --yellow: #f59e0b;
             --red: #ef4444;
             --blue: #3b82f6;
             --text: #f8f7ff;
@@ -92,6 +93,7 @@
             font-weight: 600;
             font-size: 14px;
             transition: 0.25s;
+            display: inline-block;
         }
 
         .btn-profile:hover {
@@ -108,11 +110,38 @@
             font-weight: 600;
             font-size: 14px;
             transition: 0.25s;
+            display: inline-block;
         }
 
         .btn-logout:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(168, 85, 247, 0.35);
+        }
+
+        .alert-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .alert {
+            padding: 14px 20px;
+            border-radius: 14px;
+            font-size: 14px;
+            border: 1px solid transparent;
+            backdrop-filter: blur(10px);
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86efac;
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
         .summary-grid {
@@ -162,59 +191,69 @@
         }
 
         .summary-card span {
+            display: block;
             color: var(--muted);
             font-size: 13px;
-            display: block;
+            margin-bottom: 4px;
         }
 
         .summary-card strong {
-            display: block;
-            margin-top: 6px;
             font-size: 22px;
+            font-weight: 700;
         }
 
         .summary-card small {
-            font-size: 12px;
+            font-size: 13px;
             color: var(--muted);
-            font-weight: normal;
+            font-weight: 400;
             margin-right: 4px;
         }
 
-        .transaction-form-card,
-        .transactions-card {
-            padding: 28px 30px;
+        .section-card {
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
         .section-heading {
-            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 12px;
         }
 
         .section-label {
-            color: var(--muted);
+            color: var(--purple);
             font-size: 12px;
+            font-weight: 600;
             display: block;
+            margin-bottom: 2px;
         }
 
         .section-heading h2 {
             font-size: 18px;
-            margin-top: 4px;
+            font-weight: 700;
         }
 
-        .transactions-heading {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .transaction-form {
+        .custom-form {
             display: grid;
-            grid-template-columns: repeat(4, 1fr) auto;
             gap: 16px;
             align-items: flex-end;
         }
 
+        .transaction-form {
+            grid-template-columns: repeat(4, 1fr) auto;
+        }
+
+        .budget-form {
+            grid-template-columns: 1fr 1fr auto;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
         .input-group label {
-            display: block;
             font-size: 13px;
             color: var(--muted);
             margin-bottom: 8px;
@@ -269,10 +308,101 @@
             box-shadow: 0 10px 25px rgba(168, 85, 247, 0.30);
         }
 
+        /* بودجه‌بندی */
+        .budgets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 10px;
+        }
+
+        .budget-item {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .budget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .budget-delete {
+            color: #f87171;
+            text-decoration: none;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(239, 68, 68, 0.1);
+            transition: 0.2s;
+        }
+
+        .budget-delete:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .budget-amounts {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.4s ease;
+        }
+
+        .progress-safe {
+            background: linear-gradient(90deg, #22c55e, #4ade80);
+        }
+
+        .progress-warning {
+            background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        }
+
+        .progress-danger {
+            background: linear-gradient(90deg, #ef4444, #f87171);
+        }
+
+        .budget-footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* نمودار */
+        .chart-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        .chart-box {
+            width: 100%;
+            max-width: 340px;
+        }
+
+        /* جدول تراکنش‌ها */
         .table-wrapper {
             width: 100%;
             overflow-x: auto;
-            margin-top: 10px;
         }
 
         table {
@@ -286,16 +416,14 @@
             font-size: 13px;
             font-weight: 500;
             text-align: right;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         td {
             padding: 16px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.07);
             font-size: 14px;
-        }
-
-        tbody tr {
-            transition: 0.2s;
+            vertical-align: middle;
         }
 
         tbody tr:hover {
@@ -339,6 +467,9 @@
 
         .actions-cell {
             white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .action-btn {
@@ -347,7 +478,6 @@
             border-radius: 8px;
             text-decoration: none;
             font-size: 12px;
-            margin-left: 6px;
             transition: 0.2s;
         }
 
@@ -365,6 +495,12 @@
             transform: translateY(-2px);
         }
 
+        .transactions-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
         .transaction-count {
             padding: 6px 12px;
             border-radius: 10px;
@@ -375,13 +511,17 @@
 
         .empty-state {
             text-align: center;
-            padding: 40px 20px;
+            padding: 24px;
             color: var(--muted);
+            font-size: 14px;
         }
 
         @media (max-width: 1100px) {
             .transaction-form {
                 grid-template-columns: repeat(2, 1fr);
+            }
+            .budget-form {
+                grid-template-columns: 1fr 1fr;
             }
             .btn-submit {
                 grid-column: span 2;
@@ -393,18 +533,9 @@
                 grid-template-columns: 1fr;
             }
             .topbar {
-                padding: 20px;
-                gap: 16px;
-            }
-        }
-
-        @media (max-width: 600px) {
-            .page-wrapper {
-                width: 95%;
-            }
-            .topbar {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 16px;
             }
             .header-actions {
                 flex-direction: column;
@@ -413,7 +544,8 @@
                 text-align: center;
                 width: 100%;
             }
-            .transaction-form {
+            .transaction-form,
+            .budget-form {
                 grid-template-columns: 1fr;
             }
             .btn-submit {
@@ -426,13 +558,24 @@
 
 <div class="page-wrapper">
 
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="alert-container">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
     <!-- Header -->
     <header class="topbar glass-card">
         <div>
             <span class="welcome-small">پنل مدیریت مالی</span>
             <h1>
                 خوش آمدید،
-                {{ session.get('username', user) }}
+                {{ session.get('username', username or 'کاربر') }}
             </h1>
         </div>
 
@@ -440,7 +583,9 @@
             <a href="{{ url_for('change_username') }}" class="btn-profile">
                 تغییر نام کاربری
             </a>
-            <a href="{{ url_for('change_password') }}" class="btn-user">تغییر رمز عبور</a>
+            <a href="{{ url_for('change_password') }}" class="btn-profile">
+                تغییر رمز عبور
+            </a>
             <a href="{{ url_for('logout') }}" class="btn-logout">
                 خروج
             </a>
@@ -475,30 +620,111 @@
             <div class="summary-icon">₮</div>
             <div>
                 <span>موجودی فعلی</span>
-                <strong>
-                    {{ "{:,.0f}".format(balance or 0) }}
+                <strong dir="ltr" style="display: flex; align-items: baseline; justify-content: flex-end; gap: 4px;">
                     <small>تومان</small>
+                    <span>{{ "{:,.0f}".format(balance or 0) }}</span>
                 </strong>
             </div>
         </div>
     </section>
 
+    <!-- Analytics Charts Section -->
+    <section class="glass-card section-card">
+        <div class="section-heading">
+            <span class="section-label">تحلیل داده‌ها</span>
+            <h2>نمودار تفکیک هزینه‌ها</h2>
+        </div>
+        <div class="chart-wrapper">
+            <div class="chart-box">
+                <canvas id="expenseChart"></canvas>
+                <div id="noChartData" class="empty-state" style="display: none;">
+                    هنوز هزینه‌ای برای نمایش در نمودار ثبت نشده است.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Budget Management Section -->
+    <section class="glass-card section-card">
+        <div class="section-heading">
+            <span class="section-label">برنامه‌ریزی مالی</span>
+            <h2>مدیریت بودجه ماه جاری</h2>
+        </div>
+
+        <form action="{{ url_for('set_budget') }}" method="POST" class="custom-form budget-form">
+            <div class="input-group">
+                <label>دسته‌بندی</label>
+                <input type="text" name="category" list="budget-categories" placeholder="انتخاب یا نوشتن دسته‌بندی" required>
+                <datalist id="budget-categories">
+                    <option value="خوراک">
+                    <option value="اجاره">
+                    <option value="تفریح">
+                    <option value="حمل و نقل">
+                    <option value="خرید">
+                    <option value="قبوض">
+                    <option value="سایر">
+                </datalist>
+            </div>
+
+            <div class="input-group">
+                <label>سقف بودجه ماهانه (تومان)</label>
+                <input type="number" name="limit_amount" placeholder="مثلاً 3000000" min="1" step="any" required>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                ثبت / بروزرسانی بودجه
+            </button>
+        </form>
+
+        {% if budgets_status %}
+            <div class="budgets-grid">
+                {% for b in budgets_status %}
+                    <div class="budget-item">
+                        <div class="budget-header">
+                            <strong>{{ b.category }}</strong>
+                            <a href="{{ url_for('delete_budget', id=b.id) }}" class="budget-delete" onclick="return confirm('آیا از حذف این بودجه مطمئن هستید؟')">حذف</a>
+                        </div>
+                        <div class="budget-amounts">
+                            <span>مصرف: {{ "{:,.0f}".format(b.spent_amount) }}</span>
+                            <span>سقف: {{ "{:,.0f}".format(b.limit_amount) }}</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill {% if b.percentage >= 100 %}progress-danger{% elif b.percentage >= 75 %}progress-warning{% else %}progress-safe{% endif %}"
+                                 style="width: {{ [b.percentage, 100]|min }}%;">
+                            </div>
+                        </div>
+                        <div class="budget-footer">
+                            <span>{{ b.percentage }}% مصرف شده</span>
+                            {% if b.spent_amount > b.limit_amount %}
+                                <span style="color: #f87171;">مازاد مصرف: {{ "{:,.0f}".format(b.spent_amount - b.limit_amount) }}</span>
+                            {% else %}
+                                <span>باقی‌مانده: {{ "{:,.0f}".format(b.limit_amount - b.spent_amount) }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">هنوز بودجه‌ای برای ماه جاری تعیین نشده است.</div>
+        {% endif %}
+    </section>
+
     <!-- Add Transaction -->
-    <section class="glass-card transaction-form-card">
+    <section class="glass-card section-card">
         <div class="section-heading">
             <span class="section-label">مدیریت مالی</span>
             <h2>افزودن تراکنش جدید</h2>
         </div>
 
-        <form action="{{ url_for('add_transaction') }}" method="POST" class="transaction-form">
+        <form action="{{ url_for('add_transaction') }}" method="POST" class="custom-form transaction-form">
             <div class="input-group">
                 <label>مبلغ (تومان)</label>
-                <input type="number" name="amount" placeholder="مثلاً 500000" min="0" required>
+                <input type="number" name="amount" placeholder="مثلاً 500000" min="1" step="any" required>
             </div>
 
             <div class="input-group">
-                <label>توضیحات</label>
-                <input type="text" name="description" placeholder="مثلاً خرید مواد غذایی" required>
+                <label>عنوان / توضیحات</label>
+                <input type="text" name="title" placeholder="مثلاً خرید مواد غذایی" required>
             </div>
 
             <div class="input-group">
@@ -532,7 +758,7 @@
     </section>
 
     <!-- Transactions Table -->
-    <section class="glass-card transactions-card">
+    <section class="glass-card section-card">
         <div class="section-heading transactions-heading">
             <div>
                 <span class="section-label">گزارش مالی</span>
@@ -558,22 +784,24 @@
                 <tbody>
                     {% for t in transactions %}
                     <tr>
-                        <td>{{ t.get('date', '-') }}</td>
-                        <td class="description-cell">{{ t.get('description', t.get('title', '-')) }}</td>
+                        <td>{{ t['date'] or '-' }}</td>
+                        <td class="description-cell">{{ t['title'] or '-' }}</td>
                         <td>
-                            <span class="category-badge">{{ t.get('category', 'سایر') }}</span>
+                            <span class="category-badge">{{ t['category'] or 'سایر' }}</span>
                         </td>
-                        <td class="amount-cell">{{ "{:,.0f}".format(t.get('amount', 0)|float) }} تومان</td>
+                        <td class="amount-cell">{{ "{:,.0f}".format(t['amount']|float) }} تومان</td>
                         <td>
-                            {% if t.get('type') == 'income' %}
+                            {% if t['type'] in ['income', 'درآمد'] %}
                                 <span class="type-badge income-badge">درآمد</span>
                             {% else %}
                                 <span class="type-badge expense-badge">هزینه</span>
                             {% endif %}
                         </td>
-                        <td class="actions-cell">
-                            <a href="{{ url_for('edit_transaction', id=t.id) }}" class="action-btn edit-btn">ویرایش</a>
-                            <a href="{{ url_for('delete_transaction', id=t.id) }}" class="action-btn delete-btn" onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟')">حذف</a>
+                        <td>
+                            <div class="actions-cell">
+                                <a href="{{ url_for('edit_transaction', id=t['id']) }}" class="action-btn edit-btn">ویرایش</a>
+                                <a href="{{ url_for('delete_transaction', id=t['id']) }}" class="action-btn delete-btn" onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟')">حذف</a>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
@@ -587,6 +815,60 @@
     </section>
 
 </div>
+        <!-- فرم جستجو و فیلتر -->
+        <form action="{{ url_for('dashboard') }}" method="GET" class="custom-form" style="grid-template-columns: 1fr auto auto; margin-bottom: 20px;">
+            <div class="input-group">
+                <input type="text" name="search" placeholder="جستجو در توضیحات..." value="{{ request.args.get('search', '') }}">
+            </div>
+            <div class="input-group">
+                <select name="type">
+                    <option value="">همه نوع</option>
+                    <option value="income" {% if request.args.get('type') == 'income' %}selected{% endif %}>درآمد</option>
+                    <option value="expense" {% if request.args.get('type') == 'expense' %}selected{% endif %}>هزینه</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-submit" style="margin: 0;">اعمال فیلتر</button>
+        </form>
+<script>
+    const chartLabels = {{ (chart_labels or []) | tojson }};
+    const chartData = {{ (chart_data or []) | tojson }};
+
+    if (chartLabels.length > 0 && chartData.length > 0) {
+        const ctx = document.getElementById('expenseChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    data: chartData,
+                    backgroundColor: [
+                        '#a855f7', '#ec4899', '#3b82f6', 
+                        '#10b981', '#f59e0b', '#06b6d4', 
+                        '#8b5cf6', '#64748b'
+                    ],
+                    borderColor: 'rgba(11, 9, 20, 0.8)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#f8f7ff',
+                            font: { family: 'Vazirmatn', size: 12 },
+                            padding: 14
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('expenseChart').style.display = 'none';
+        document.getElementById('noChartData').style.display = 'block';
+    }
+</script>
 
 </body>
 </html>
