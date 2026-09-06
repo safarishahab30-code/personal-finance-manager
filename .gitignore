@@ -1,5 +1,13 @@
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+
+# Databases
+*.db
+*.sqlite3
+instance/
+
+# Virtual Environment
+venv/
 .env
-*.csv
-*.xlsx
