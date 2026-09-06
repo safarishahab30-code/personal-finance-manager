@@ -76,7 +76,7 @@
 <body>
     <div class="card">
         <h2>ویرایش تراکنش</h2>
-        <form action="{{ url_for('edit_transaction', id=transaction['id']) }}" method="POST">
+        <form action="{{ url_for('edit_transaction', transaction_id=transaction['id']) }}" method="POST">
             <div class="input-group">
                 <label>مبلغ (تومان)</label>
                 <input type="number" name="amount" value="{{ transaction['amount'] }}" required min="1">
