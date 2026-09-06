@@ -180,6 +180,7 @@ def add_transaction():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
+    user_id = session["user_id"]
     title = request.form.get("title", "").strip()
     category = request.form.get("category", "").strip()
     t_type = request.form.get("type", "").strip()
@@ -191,20 +192,52 @@ def add_transaction():
         if amount <= 0:
             raise ValueError
     except (ValueError, TypeError):
-        flash("مبلغ وارد شده معتبر نیست.")
+        flash(farsi("مبلغ وارد شده معتبر نیست."), "danger")
         return redirect(url_for("dashboard"))
 
     with db.get_connection() as conn:
         cursor = conn.cursor()
+
+        # بررسی هوشمند بودجه در صورت ثبت هزینه
+        if t_type == "expense":
+            # ۱. دریافت سقف بودجه دسته
+            cursor.execute(
+                "SELECT limit_amount FROM budgets WHERE user_id = ? AND category = ?",
+                (user_id, category)
+            )
+            budget_row = cursor.fetchone()
+
+            if budget_row and budget_row[0] and budget_row[0] > 0:
+                limit = float(budget_row[0])
+
+                # ۲. مجموع هزینه‌های ثبت‌شده قبلی در این دسته
+                cursor.execute(
+                    "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND category = ? AND type = 'expense'",
+                    (user_id, category)
+                )
+                sum_row = cursor.fetchone()
+                current_spent = float(sum_row[0]) if sum_row and sum_row[0] else 0.0
+
+                new_total = current_spent + amount
+
+                # الف) مسدودسازی در صورت رد شدن از ۱۰۰٪ سقف بودجه
+                if new_total > limit:
+                    flash(farsi(f"خطا: ثبت این هزینه ({amount:,.0f}) باعث عبور از سقف بودجه دسته '{category}' ({limit:,.0f}) می‌شود!"), "danger")
+                    return redirect(url_for("dashboard"))
+
+                # ب) هشدار در صورت رسیدن به ۸۰٪ تا ۱۰۰٪ سقف بودجه
+                if new_total >= (limit * 0.8):
+                    flash(farsi(f"هشدار: شما با ثبت این هزینه به بیش از ۸۰٪ سقف بودجه دسته '{category}' رسیدید."), "warning")
+
+        # ثبت تراکنش در صورت مجاز بودن
         cursor.execute(
             """INSERT INTO transactions (user_id, title, amount, type, category, date, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (session["user_id"], title, amount, t_type, category, date, now)
+            (user_id, title, amount, t_type, category, date, now)
         )
         conn.commit()
 
     return redirect(url_for("dashboard"))
-
 
 @app.route('/edit_transaction/<int:transaction_id>', methods=['GET', 'POST'])
 def edit_transaction(transaction_id):
@@ -254,32 +287,70 @@ def set_budget():
         return redirect(url_for('login'))
 
     user_id = session['user_id']
-    category = request.form['category']
-    limit_amount = float(request.form['limit_amount'])
-    month = request.form.get('month', datetime.now().strftime('%Y-%m'))
+    category = request.form.get('category', '').strip()
+    month = request.form.get(
+        'month',
+        datetime.now().strftime('%Y-%m')
+    ).strip()
+
+    if not category:
+        flash('دسته‌بندی بودجه را انتخاب کنید.', 'error')
+        return redirect(url_for('dashboard'))
+
+    try:
+        limit_amount = float(request.form.get('limit_amount', ''))
+
+        if limit_amount <= 0:
+            raise ValueError
+
+    except (ValueError, TypeError):
+        flash('مبلغ بودجه باید یک عدد مثبت باشد.', 'error')
+        return redirect(url_for('dashboard'))
 
     conn = get_db_connection()
+
     existing = conn.execute(
-        'SELECT id FROM budgets WHERE user_id = ? AND category = ? AND month = ?',
+        '''
+        SELECT id
+        FROM budgets
+        WHERE user_id = ?
+          AND category = ?
+          AND month = ?
+        LIMIT 1
+        ''',
         (user_id, category, month)
     ).fetchone()
 
     if existing:
         conn.execute(
-            'UPDATE budgets SET limit_amount = ? WHERE id = ?',
+            '''
+            UPDATE budgets
+            SET limit_amount = ?
+            WHERE id = ?
+            ''',
             (limit_amount, existing['id'])
         )
     else:
         conn.execute(
-            'INSERT INTO budgets (user_id, category, limit_amount, month, created_at) VALUES (?, ?, ?, ?, ?)',
-            (user_id, category, limit_amount, month, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            '''
+            INSERT INTO budgets
+                (user_id, category, limit_amount, month, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ''',
+            (
+                user_id,
+                category,
+                limit_amount,
+                month,
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            )
         )
 
     conn.commit()
     conn.close()
+
+    flash('بودجه با موفقیت ذخیره شد.', 'success')
     return redirect(url_for('dashboard'))
-
-
 @app.route('/delete_budget/<int:id>')
 def delete_budget(id):
     if 'user_id' not in session:
@@ -289,6 +360,7 @@ def delete_budget(id):
     conn.execute('DELETE FROM budgets WHERE id = ? AND user_id = ?', (id, session['user_id']))
     conn.commit()
     conn.close()
+    conn.row_factory = sqlite3.Row
     flash('بودجه با موفقیت حذف شد.', 'success')
     return redirect(url_for('dashboard'))
 
