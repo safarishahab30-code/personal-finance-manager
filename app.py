@@ -1,7 +1,9 @@
 import sqlite3
 import os
+import csv
+import io
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash,Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from data.database import Database
 db = Database()
@@ -441,6 +443,52 @@ def change_password():
 
         return redirect(url_for("profile"))
 
+@app.route('/export/csv')
+def export_csv():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    transactions = conn.execute(
+        'SELECT * FROM transactions WHERE user_id = ? ORDER BY id DESC',
+        (session['user_id'],)
+    ).fetchall()
+    conn.close()
+
+    output = io.StringIO()
+    output.write('sep=;\n')
+    writer = csv.writer(output, delimiter=';')
+    writer.writerow(['ردیف', 'نوع', 'مبلغ', 'دسته‌بندی', 'توضیحات', 'تاریخ'])
+
+    for idx, t in enumerate(transactions, 1):
+        row = dict(t)
+        t_type = 'درآمد' if row.get('type') == 'income' else 'هزینه'
+        amount = row.get('amount', 0)
+        category = row.get('category') or row.get('category_id') or '-'
+        description = row.get('description') or row.get('title') or ''
+        date = row.get('date') or row.get('created_at') or '-'
+
+        writer.writerow([idx, t_type, amount, category, description, date])
+
+    output.seek(0)
+    return Response(
+        output.getvalue().encode('utf-8-sig'),
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': 'attachment; filename=transactions_report.csv'}
+    )
+@app.route('/export/pdf')
+def export_pdf():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    transactions = conn.execute(
+        'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC',
+        (session['user_id'],)
+    ).fetchall()
+    conn.close()
+
+    return render_template('report.html', transactions=transactions)
 
 # ==========================================
 # اجرای برنامه

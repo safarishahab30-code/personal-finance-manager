@@ -461,3 +461,17 @@ tbody tr:hover {
     font-size: 0.9rem;
 }
 
+.btn-export {
+    background-color: #7c3aed;
+    color: #ffffff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    transition: background-color 0.2s ease;
+    display: inline-block;
+}
+
+.btn-export:hover {
+    background-color: #6d28d9;
+}

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>گزارش مالی</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; padding: 20px; color: #222; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #7c3aed; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
+        th { background-color: #f3f4f6; }
+        .income { color: #16a34a; }
+        .expense { color: #dc2626; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="header">
+        <h2>گزارش تراکنش‌های مالی</h2>
+        <p>کاربر: {{ session.get('username', 'کاربر') }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ردیف</th>
+                <th>نوع</th>
+                <th>مبلغ (تومان)</th>
+                <th>دسته‌بندی</th>
+                <th>توضیحات</th>
+                <th>تاریخ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in transactions %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td class="{{ 'income' if t['type'] == 'income' else 'expense' }}">
+                    {{ 'درآمد' if t['type'] == 'income' else 'هزینه' }}
+                </td>
+                <td>{{ "{:,}".format(t['amount']) }}</td>
+                <td>{{ t['category'] }}</td>
+                <td>{{ t['description'] or '-' }}</td>
+                <td>{{ t['date'] }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6">تراکنشی یافت نشد.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
