@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>پروفایل کاربری</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazirmatn, Tahoma, sans-serif; }
         body {
             min-height: 100vh;
             background: linear-gradient(135deg, #2b1055 0%, #1a1a2e 50%, #24243e 100%);
@@ -22,23 +23,29 @@
         }
         .topbar span { font-size: 0.85rem; color: #a78bfa; display: block; }
         .topbar h2 { margin-top: 5px; }
-        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn { padding: 10px 18px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 0.9rem; color: #fff; display: inline-block; }
+        .btn-group { display: flex; gap: 10px; }
+        .btn { padding: 10px 18px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 0.9rem; color: #fff; }
         .btn-dashboard { background-color: #7c3aed; }
+        .btn-dashboard:hover { background-color: #8b5cf6; }
         .btn-logout { background-color: #ef4444; }
-        .flash {
-            background: rgba(124, 58, 237, 0.15);
-            border: 1px solid rgba(124, 58, 237, 0.4);
-            color: #d8b4fe;
+        .btn-logout:hover { background-color: #dc2626; }
+        
+        .alert-container { margin-bottom: 20px; }
+        .alert {
             padding: 12px 18px; border-radius: 10px; margin-bottom: 10px; font-size: 0.9rem;
+            backdrop-filter: blur(5px);
         }
+        .alert-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #6ee7b7; }
+        .alert-danger { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; }
+        .alert-info { background: rgba(124, 58, 237, 0.15); border: 1px solid rgba(124, 58, 237, 0.4); color: #d8b4fe; }
+
         .glass-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px; padding: 25px;
             backdrop-filter: blur(10px);
+            margin-bottom: 20px;
         }
-        .info-card { margin-bottom: 25px; }
         .info-card h3 { color: #c084fc; font-size: 1rem; margin-bottom: 12px; }
         .info-card p { color: #94a3b8; font-size: 0.85rem; margin: 6px 0; }
         .info-card .username { color: #fff; font-size: 1.2rem; font-weight: bold; }
@@ -60,6 +67,7 @@
 
         .forms-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;
+            margin-bottom: 20px;
         }
         .form-card h3 {
             color: #c084fc; font-size: 1.1rem;
@@ -67,19 +75,42 @@
             padding-bottom: 12px; margin-bottom: 18px;
         }
         label { display: block; color: #cbd5e1; font-size: 0.85rem; margin-bottom: 8px; }
+        
+        .input-wrapper { position: relative; margin-bottom: 15px; }
         input {
-            width: 100%; padding: 11px; margin-bottom: 15px;
+            width: 100%; padding: 11px 40px 11px 11px;
             background: rgba(0, 0, 0, 0.25);
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 8px; color: #fff; font-size: 0.9rem;
+            font-family: inherit;
         }
         input:focus { outline: none; border-color: #7c3aed; }
+        
+        .toggle-pwd {
+            position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1rem;
+        }
+        .btn-gen-pwd {
+            background: none; border: none; color: #a78bfa; font-size: 0.8rem;
+            cursor: pointer; text-decoration: underline; margin-bottom: 10px; display: inline-block;
+        }
+        .btn-gen-pwd:hover { color: #c084fc; }
+
         .btn-submit {
             width: 100%; background-color: #7c3aed; color: #fff;
             border: none; padding: 12px; border-radius: 8px;
-            font-weight: bold; cursor: pointer; font-family: Tahoma;
+            font-weight: bold; cursor: pointer; font-family: inherit;
+            transition: 0.2s ease;
         }
         .btn-submit:hover { background-color: #8b5cf6; }
+        
+        .export-card h3 { color: #c084fc; font-size: 1.1rem; margin-bottom: 8px; }
+        .export-card p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 16px; }
+        .export-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+        .btn-export-excel { background-color: #059669; }
+        .btn-export-excel:hover { background-color: #10b981; }
+        .btn-export-pdf { background-color: #dc2626; }
+        .btn-export-pdf:hover { background-color: #ef4444; }
     </style>
 </head>
 <body>
@@ -98,18 +129,24 @@
         </div>
 
         <!-- پیام‌های سیستم -->
-        {% with messages = get_flashed_messages() %}
-            {% for message in messages %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category in ['success', 'danger', 'info'] else 'info' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
         {% endwith %}
 
         <!-- اطلاعات حساب -->
         <div class="glass-card info-card">
             <h3>اطلاعات حساب</h3>
             <p class="username">کاربر: {{ user['username'] if user else session.get('username') }}</p>
-            <p>تاریخ عضویت: {{ user['created_at'] if user else '---' }}</p>
-            <p>آخرین بروزرسانی: {{ user['updated_at'] if user else '---' }}</p>
+            <p>تاریخ عضویت: {{ (user['created_at'] if user and user['created_at'] else '---') | jalali if user and user['created_at'] else '---' }}</p>
+            <p>آخرین بروزرسانی: {{ (user['updated_at'] if user and user['updated_at'] else '---') | jalali if user and user['updated_at'] else '---' }}</p>
         </div>
 
         <!-- بخش دریافت گزارش‌ها -->
@@ -132,7 +169,9 @@
                 <h3>تغییر نام کاربری</h3>
                 <form action="{{ url_for('change_username') }}" method="POST">
                     <label>نام کاربری جدید</label>
-                    <input type="text" name="new_username" required placeholder="نام جدید را وارد کنید">
+                    <div class="input-wrapper">
+                        <input type="text" name="new_username" required placeholder="نام جدید را وارد کنید" value="{{ session.get('username', '') }}">
+                    </div>
                     <button type="submit" class="btn-submit">بروزرسانی نام کاربری</button>
                 </form>
             </div>
@@ -142,14 +181,71 @@
                 <h3>تغییر رمز عبور</h3>
                 <form action="{{ url_for('change_password') }}" method="POST">
                     <label>رمز عبور فعلی</label>
-                    <input type="password" name="current_password" required placeholder="رمز فعلی">
-                    <label>رمز عبور جدید</label>
-                    <input type="password" name="new_password" required placeholder="حداقل ۶ کاراکتر">
+                    <div class="input-wrapper">
+                        <input type="password" id="current_password" name="current_password" required placeholder="رمز فعلی">
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('current_password')">👁</button>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label>رمز عبور جدید</label>
+                        <button type="button" class="btn-gen-pwd" onclick="generateStrongPassword()">پیشنهاد رمز قوی</button>
+                    </div>
+                    <div class="input-wrapper">
+                        <input type="password" id="new_password" name="new_password" required placeholder="حداقل ۸ کاراکتر (حرف و عدد)">
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('new_password')">👁</button>
+                    </div>
+
+                    <label>تکرار رمز عبور جدید</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="confirm_password" name="confirm_password" required placeholder="تکرار رمز عبور جدید">
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('confirm_password')">👁</button>
+                    </div>
+
                     <button type="submit" class="btn-submit">بروزرسانی رمز عبور</button>
                 </form>
             </div>
 
         </div>
+
+        <!-- بخش خروجی و گزارشات -->
+        <div class="glass-card export-card">
+            <h3>گزارش‌گیری و خروجی داده‌ها</h3>
+            <p>می‌توانید تمامی تراکنش‌های ثبت‌شده خود را با فرمت استاندارد دانلود کنید:</p>
+            <div class="export-actions">
+                <a href="{{ url_for('export_excel') }}" class="btn btn-export-excel">
+                    📥 دریافت فایل اکسل (Excel)
+                </a>
+                <a href="{{ url_for('export_pdf') }}" class="btn btn-export-pdf">
+                    📄 دریافت گزارش PDF
+                </a>
+            </div>
+        </div>
+
     </div>
+
+    <script>
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+            } else {
+                input.type = 'password';
+            }
+        }
+
+        function generateStrongPassword() {
+            const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*';
+            let password = '';
+            for (let i = 0; i < 12; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            const newPass = document.getElementById('new_password');
+            const confPass = document.getElementById('confirm_password');
+            newPass.value = password;
+            confPass.value = password;
+            newPass.type = 'text';
+            confPass.type = 'text';
+        }
+    </script>
 </body>
 </html>

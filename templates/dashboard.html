@@ -4,559 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>داشبورد مدیریت مالی</title>
-    <!-- فونت وزیر و استایل‌های پایه -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- کتابخانه نمودار -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --bg-dark: #0b0914;
-            --bg-card: rgba(255, 255, 255, 0.065);
-            --border: rgba(255, 255, 255, 0.12);
-            --purple: #a855f7;
-            --pink: #ec4899;
-            --green: #22c55e;
-            --yellow: #f59e0b;
-            --red: #ef4444;
-            --blue: #3b82f6;
-            --text: #f8f7ff;
-            --muted: #aaa5bb;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
-        }
-
-        body.dashboard-body {
-            min-height: 100vh;
-            direction: rtl;
-            color: var(--text);
-            background:
-                radial-gradient(circle at 85% 10%, rgba(168, 85, 247, 0.20), transparent 35%),
-                radial-gradient(circle at 10% 90%, rgba(236, 72, 153, 0.16), transparent 35%),
-                var(--bg-dark);
-            overflow-x: hidden;
-            padding: 25px 0;
-        }
-
-        .page-wrapper {
-            max-width: 1200px;
-            width: 90%;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .glass-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 1px solid var(--border);
-            border-radius: 22px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.30);
-        }
-
-        .topbar {
-            padding: 24px 30px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .welcome-small {
-            color: var(--muted);
-            font-size: 13px;
-            display: block;
-        }
-
-        .topbar h1 {
-            margin-top: 6px;
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .btn-profile {
-            text-decoration: none;
-            color: #d8b4fe;
-            padding: 10px 18px;
-            border-radius: 12px;
-            background: rgba(168, 85, 247, 0.15);
-            border: 1px solid rgba(168, 85, 247, 0.3);
-            font-weight: 600;
-            font-size: 14px;
-            transition: 0.25s;
-            display: inline-block;
-        }
-
-        .btn-profile:hover {
-            background: rgba(168, 85, 247, 0.25);
-            transform: translateY(-2px);
-        }
-
-        .btn-logout {
-            text-decoration: none;
-            color: white;
-            padding: 10px 24px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--pink), var(--purple));
-            font-weight: 600;
-            font-size: 14px;
-            transition: 0.25s;
-            display: inline-block;
-        }
-
-        .btn-logout:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(168, 85, 247, 0.35);
-        }
-
-        .alert-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .alert {
-            padding: 14px 20px;
-            border-radius: 14px;
-            font-size: 14px;
-            border: 1px solid transparent;
-            backdrop-filter: blur(10px);
-        }
-
-        .alert-success {
-            background: rgba(34, 197, 94, 0.15);
-            color: #86efac;
-            border-color: rgba(34, 197, 94, 0.3);
-        }
-
-        .alert-danger {
-            background: rgba(239, 68, 68, 0.15);
-            color: #fca5a5;
-            border-color: rgba(239, 68, 68, 0.3);
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-        }
-
-        .summary-card {
-            padding: 24px;
-            min-height: 130px;
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            transition: 0.25s;
-        }
-
-        .summary-card:hover {
-            transform: translateY(-4px);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .summary-icon {
-            width: 54px;
-            height: 54px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        .income-card .summary-icon {
-            background: rgba(34, 197, 94, 0.15);
-            color: var(--green);
-        }
-
-        .expense-card .summary-icon {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--red);
-        }
-
-        .balance-card .summary-icon {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--blue);
-        }
-
-        .summary-card span {
-            display: block;
-            color: var(--muted);
-            font-size: 13px;
-            margin-bottom: 4px;
-        }
-
-        .summary-card strong {
-            font-size: 22px;
-            font-weight: 700;
-        }
-
-        .summary-card small {
-            font-size: 13px;
-            color: var(--muted);
-            font-weight: 400;
-            margin-right: 4px;
-        }
-
-        .section-card {
-            padding: 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .section-heading {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            padding-bottom: 12px;
-        }
-
-        .section-label {
-            color: var(--purple);
-            font-size: 12px;
-            font-weight: 600;
-            display: block;
-            margin-bottom: 2px;
-        }
-
-        .section-heading h2 {
-            font-size: 18px;
-            font-weight: 700;
-        }
-
-        .custom-form {
-            display: grid;
-            gap: 16px;
-            align-items: flex-end;
-        }
-
-        .transaction-form {
-            grid-template-columns: repeat(4, 1fr) auto;
-        }
-
-        .budget-form {
-            grid-template-columns: 1fr 1fr auto;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .input-group label {
-            font-size: 13px;
-            color: var(--muted);
-            margin-bottom: 8px;
-        }
-
-        .input-group input,
-        .input-group select {
-            width: 100%;
-            height: 46px;
-            padding: 0 14px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, 0.055);
-            color: white;
-            font-size: 14px;
-            outline: none;
-            transition: 0.2s;
-        }
-
-        .input-group input::placeholder {
-            color: #777284;
-        }
-
-        .input-group input:focus,
-        .input-group select:focus {
-            border-color: var(--purple);
-            background: rgba(168, 85, 247, 0.08);
-            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
-        }
-
-        .input-group select option {
-            background: #181522;
-            color: white;
-        }
-
-        .btn-submit {
-            height: 46px;
-            padding: 0 24px;
-            border: none;
-            border-radius: 12px;
-            color: white;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            background: linear-gradient(135deg, var(--pink), var(--purple));
-            transition: 0.25s;
-            white-space: nowrap;
-        }
-
-        .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(168, 85, 247, 0.30);
-        }
-
-        /* بودجه‌بندی */
-        .budgets-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 16px;
-            margin-top: 10px;
-        }
-
-        .budget-item {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 16px;
-        }
-
-        .budget-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .budget-delete {
-            color: #f87171;
-            text-decoration: none;
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 6px;
-            background: rgba(239, 68, 68, 0.1);
-            transition: 0.2s;
-        }
-
-        .budget-delete:hover {
-            background: rgba(239, 68, 68, 0.2);
-        }
-
-        .budget-amounts {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            color: var(--muted);
-            margin-bottom: 8px;
-        }
-
-        .progress-bar-bg {
-            width: 100%;
-            height: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 8px;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            border-radius: 10px;
-            transition: width 0.4s ease;
-        }
-
-        .progress-safe {
-            background: linear-gradient(90deg, #22c55e, #4ade80);
-        }
-
-        .progress-warning {
-            background: linear-gradient(90deg, #f59e0b, #fbbf24);
-        }
-
-        .progress-danger {
-            background: linear-gradient(90deg, #ef4444, #f87171);
-        }
-
-        .budget-footer {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        /* نمودار */
-        .chart-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 10px 0;
-        }
-
-        .chart-box {
-            width: 100%;
-            max-width: 340px;
-        }
-
-        /* جدول تراکنش‌ها */
-        .table-wrapper {
-            width: 100%;
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            padding: 14px 16px;
-            color: var(--muted);
-            font-size: 13px;
-            font-weight: 500;
-            text-align: right;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        td {
-            padding: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-            font-size: 14px;
-            vertical-align: middle;
-        }
-
-        tbody tr:hover {
-            background: rgba(255, 255, 255, 0.035);
-        }
-
-        .description-cell {
-            font-weight: 600;
-        }
-
-        .amount-cell {
-            font-weight: bold;
-        }
-
-        .category-badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 8px;
-            background: rgba(168, 85, 247, 0.12);
-            color: #d8b4fe;
-            font-size: 12px;
-        }
-
-        .type-badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .income-badge {
-            background: rgba(34, 197, 94, 0.12);
-            color: #4ade80;
-        }
-
-        .expense-badge {
-            background: rgba(239, 68, 68, 0.12);
-            color: #f87171;
-        }
-
-        .actions-cell {
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .icon-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 6px;
-            border-radius: 8px;
-            text-decoration: none;
-            transition: 0.2s;
-        }
-
-        .edit-btn {
-            background: rgba(245, 158, 11, 0.13);
-            color: #fbbf24;
-        }
-
-        .delete-btn {
-            background: rgba(239, 68, 68, 0.12);
-            color: #f87171;
-        }
-
-        .icon-btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .transactions-heading {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .transaction-count {
-            padding: 6px 12px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.06);
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 24px;
-            color: var(--muted);
-            font-size: 14px;
-        }
-
-        @media (max-width: 1100px) {
-            .transaction-form {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .budget-form {
-                grid-template-columns: 1fr 1fr;
-            }
-            .btn-submit {
-                grid-column: span 2;
-            }
-        }
-
-        @media (max-width: 800px) {
-            .summary-grid {
-                grid-template-columns: 1fr;
-            }
-            .topbar {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 16px;
-            }
-            .header-actions {
-                flex-direction: column;
-            }
-            .btn-profile, .btn-logout {
-                text-align: center;
-                width: 100%;
-            }
-            .transaction-form,
-            .budget-form {
-                grid-template-columns: 1fr;
-            }
-            .btn-submit {
-                grid-column: auto;
-            }
-        }
-    </style>
 </head>
 <body class="dashboard-body">
 
@@ -661,13 +111,19 @@
                 <label>دسته‌بندی</label>
                 <input type="text" name="category" list="budget-categories" placeholder="انتخاب یا نوشتن دسته‌بندی" required>
                 <datalist id="budget-categories">
-                    <option value="خوراک">
-                    <option value="اجاره">
-                    <option value="تفریح">
-                    <option value="حمل و نقل">
-                    <option value="خرید">
-                    <option value="قبوض">
-                    <option value="سایر">
+                    {% if categories %}
+                        {% for cat in categories %}
+                            <option value="{{ cat['name'] if cat is mapping else (cat.name if cat.name is defined else cat) }}">
+                        {% endfor %}
+                    {% else %}
+                        <option value="خوراک">
+                        <option value="اجاره">
+                        <option value="تفریح">
+                        <option value="حمل و نقل">
+                        <option value="خرید">
+                        <option value="قبوض">
+                        <option value="سایر">
+                    {% endif %}
                 </datalist>
             </div>
 
@@ -687,20 +143,21 @@
                     <div class="budget-item">
                         <div class="budget-header">
                             <strong>{{ b.category }}</strong>
+                            <a href="{{ url_for('delete_budget', id=b.id) }}" class="budget-delete" onclick="return confirm('آیا از حذف این بودجه مطمئن هستید؟')">حذف</a>
                         </div>
                         <div class="budget-amounts">
                             <span>مصرف: {{ "{:,.0f}".format(b.spent_amount) }}</span>
                             <span>سقف: {{ "{:,.0f}".format(b.limit_amount) }}</span>
                         </div>
                         <div class="progress-bar-bg">
-                            <div class="progress-bar-fill {% if b.percentage >= 100 %}progress-danger{% elif b.percentage >= 75 %}progress-warning{% else %}progress-safe{% endif %}"
+                            <div class="progress-bar-fill {% if b.percentage >= 100 %}progress-danger{% elif b.percentage >= 80 %}progress-warning{% else %}progress-safe{% endif %}"
                                  style="width: {{ [b.percentage, 100]|min }}%;">
                             </div>
                         </div>
                         <div class="budget-footer">
                             <span>{{ b.percentage }}% مصرف شده</span>
                             {% if b.spent_amount > b.limit_amount %}
-                                <span style="color: #f87171;">مازاد مصرف: {{ "{:,.0f}".format(b.spent_amount - b.limit_amount) }}</span>
+                                <span style="color: #f87171;">مازاد: {{ "{:,.0f}".format(b.spent_amount - b.limit_amount) }}</span>
                             {% else %}
                                 <span>باقی‌مانده: {{ "{:,.0f}".format(b.limit_amount - b.spent_amount) }}</span>
                             {% endif %}
@@ -728,22 +185,28 @@
 
             <div class="input-group">
                 <label>عنوان / توضیحات</label>
-                <input type="text" name="title" placeholder="مثلاً خرید مواد غذایی" required>
+                <input type="text" name="title" placeholder="مثلاً خرید کتاب" required>
             </div>
 
             <div class="input-group">
                 <label>دسته‌بندی</label>
-                <input type="text" name="category" list="categories" placeholder="انتخاب دسته‌بندی" required>
-                <datalist id="categories">
-                    <option value="خوراک">
-                    <option value="اجاره">
-                    <option value="حقوق">
-                    <option value="دستمزد">
-                    <option value="تفریح">
-                    <option value="حمل و نقل">
-                    <option value="خرید">
-                    <option value="قبوض">
-                    <option value="سایر">
+                <input type="text" name="category" list="transaction-categories" placeholder="انتخاب دسته‌بندی" required>
+                <datalist id="transaction-categories">
+                    {% if categories %}
+                        {% for cat in categories %}
+                            <option value="{{ cat['name'] if cat is mapping else (cat.name if cat.name is defined else cat) }}">
+                        {% endfor %}
+                    {% else %}
+                        <option value="خوراک">
+                        <option value="اجاره">
+                        <option value="حقوق">
+                        <option value="دستمزد">
+                        <option value="تفریح">
+                        <option value="حمل و نقل">
+                        <option value="خرید">
+                        <option value="قبوض">
+                        <option value="سایر">
+                    {% endif %}
                 </datalist>
             </div>
 
@@ -761,7 +224,7 @@
         </form>
     </section>
 
-    <!-- Transactions Table -->
+    <!-- Transactions Table & Filters -->
     <section class="glass-card section-card">
         <div class="section-heading transactions-heading">
             <div>
@@ -769,46 +232,96 @@
                 <h2>تاریخچه تراکنش‌ها</h2>
             </div>
             <span class="transaction-count">
-                {{ transactions|length }} تراکنش
+                {{ transactions|length }} تراکنش ثبت شده
             </span>
         </div>
 
-        <!-- فرم جستجو و فیلتر -->
-        <form action="{{ url_for('dashboard') }}" method="GET" class="custom-form" style="grid-template-columns: 1fr auto auto; margin-bottom: 20px;">
-            <div class="input-group">
-                <input type="text" name="search" placeholder="جستجو در توضیحات..." value="{{ request.args.get('search', '') }}">
+        <!-- فیلتر و جستجوی مدرن -->
+        <div class="filter-container">
+            <form action="{{ url_for('dashboard') }}" method="GET" class="modern-filter-form">
+                <div class="filter-row">
+                    <div class="filter-field search-field">
+                        <input type="text" name="search" placeholder="🔍 جستجو در عنوان، توضیoption value="تفریح">
+                        <option value="حمل و نقل">
+                        <option value="خرید">
+                        <option value="قبوض">
+                        <option value="سایر">
+                    {% endif %}
+                </datalist>
             </div>
+
             <div class="input-group">
-                <select name="type">
-                    <option value="">همه نوع</option>
-                    <option value="income" {% if request.args.get('type') == 'income' %}selected{% endif %}>درآمد</option>
-                    <option value="expense" {% if request.args.get('type') == 'expense' %}selected{% endif %}>هزینه</option>
+                <label>نوع تراکنش</label>
+                <select name="type" required>
+                    <option value="expense">هزینه</option>
+                    <option value="income">درآمد</option>
                 </select>
             </div>
-            <button type="submit" class="btn-submit" style="margin: 0;">اعمال فیلتر</button>
+
+            <button type="submit" class="btn-submit">
+                + ثبت تراکنش
+            </button>
         </form>
+    </section>
+
+    <!-- Transactions Table & Filters -->
+    <section class="glass-card section-card">
+        <div class="section-heading transactions-heading">
+            <div>
+                <span class="section-label">گزارش مالی</span>
+                <h2>تاریخچه تراکنش‌ها</h2>
+            </div>
+            <span class="transaction-count">
+                {{ transactions|length }} تراکنش ثبت شده
+            </span>
+        </div>
+
+        <!-- فیلتر و جستجوی مدرن -->
+        <div class="filter-container">
+            <form action="{{ url_for('dashboard') }}" method="GET" class="modern-filter-form">
+                <div class="filter-row">
+                    <div class="filter-field search-field">
+                        <input type="text" name="search" placeholder="🔍 جستجو در عنوان، توضیحات یا دسته..." value="{{ search_query or '' }}">
+                    </div>
+                    <div class="filter-field">
+                        <select name="type">
+                            <option value="">همه انواع تراکنش</option>
+                            <option value="income" {% if selected_type == 'income' %}selected{% endif %}>درآمد</option>
+                            <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
+                        </select>
+                    </div>
+                    <div class="filter-field date_to or '' }}">
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button type="submit" class="btn-filter-apply">اعمال فیلترها</button>
+                    <a href="{{ url_for('dashboard') }}" class="btn-filter-clear">پاک کردن</a>
+                </div>
+            </form>
+        </div>
 
         <div class="table-wrapper">
-            <table>
+            <table class="modern-table">
                 <thead>
                     <tr>
-                        <th>تاریخ</th>
-                        <th>توضیحات</th>
+                        <th>تاریخ و زمان</th>
+                        <th>عنوان و توضیحات</th>
                         <th>دسته‌بندی</th>
                         <th>مبلغ</th>
                         <th>نوع</th>
-                        <th>عملیات</th>
+                        <th style="text-align: center;">عملیات</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for t in transactions %}
                     <tr>
-                        <td>{{ t['date'] or '-' }}</td>
+                        <td class="date-cell">{{ (t['created_at'] if 'created_at' in t.keys() else t['date']) | jalali }}</td>
                         <td class="description-cell">{{ t['title'] or '-' }}</td>
                         <td>
                             <span class="category-badge">{{ t['category'] or 'سایر' }}</span>
                         </td>
-                        <td class="amount-cell">{{ "{:,.0f}".format(t['amount']|float) }} تومان</td>
+                        <td class="amount-cell">{{ "{:,.0f}".format(t['amount']|float) }} <small>تومان</small></td>
                         <td>
                             {% if t['type'] in ['income', 'درآمد'] %}
                                 <span class="type-badge income-badge">درآمد</span>
@@ -818,16 +331,22 @@
                         </td>
                         <td class="actions-cell">
                             <a href="{{ url_for('edit_transaction', transaction_id=t['id']) }}" class="icon-btn edit-btn" title="ویرایش">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                ✏️
                             </a>
                             <a href="{{ url_for('delete_transaction', transaction_id=t['id']) }}" class="icon-btn delete-btn" title="حذف" onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟')">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                🗑️
                             </a>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="empty-state">هنوز هیچ تراکنشی ثبت نشده است.</td>
+                        <td colspan="6" class="empty-state">
+                            {% if search_query or selected_type or selected_category or time_preset or date_from or date_to %}
+                                هیچ تراکنشی با فیلترهای انتخابی پیدا نشد.
+                            {% else %}
+                                هنوز هیچ تراکنشی ثبت نشده است.
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -878,6 +397,20 @@
         if (chartElement) chartElement.style.display = 'none';
         if (noDataElement) noDataElement.style.display = 'block';
     }
+</script>
+
+<script>
+    window.addEventListener('beforeunload', () => {
+        sessionStorage.setItem('scrollPos', window.scrollY);
+    });
+
+    window.addEventListener('load', () => {
+        const scrollPos = sessionStorage.getItem('scrollPos');
+        if (scrollPos) {
+            window.scrollTo({ top: parseInt(scrollPos), behavior: 'instant' });
+            sessionStorage.removeItem('scrollPos');
+        }
+    });
 </script>
 </body>
 </html>
