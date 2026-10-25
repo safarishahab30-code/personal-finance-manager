@@ -113,16 +113,11 @@
                 <datalist id="budget-categories">
                     {% if categories %}
                         {% for cat in categories %}
-                            <option value="{{ cat['name'] if cat is mapping else (cat.name if cat.name is defined else cat) }}">
+                            <option value="{{ cat }}">
                         {% endfor %}
                     {% else %}
-                        <option value="خوراک">
-                        <option value="اجاره">
-                        <option value="تفریح">
-                        <option value="حمل و نقل">
-                        <option value="خرید">
-                        <option value="قبوض">
-                        <option value="سایر">
+                        <option value="خوراک"> <option value="اجاره"> <option value="تفریح">
+                        <option value="حمل و نقل"> <option value="خرید"> <option value="قبوض"> <option value="سایر">
                     {% endif %}
                 </datalist>
             </div>
@@ -132,9 +127,7 @@
                 <input type="number" name="limit_amount" placeholder="مثلاً 3000000" min="1" step="any" required>
             </div>
 
-            <button type="submit" class="btn-submit">
-                ثبت / بروزرسانی بودجه
-            </button>
+            <button type="submit" class="btn-submit">ثبت / بروزرسانی بودجه</button>
         </form>
 
         {% if budgets_status %}
@@ -182,34 +175,23 @@
                 <label>مبلغ (تومان)</label>
                 <input type="number" name="amount" placeholder="مثلاً 500000" min="1" step="any" required>
             </div>
-
             <div class="input-group">
                 <label>عنوان / توضیحات</label>
                 <input type="text" name="title" placeholder="مثلاً خرید کتاب" required>
             </div>
-
             <div class="input-group">
                 <label>دسته‌بندی</label>
                 <input type="text" name="category" list="transaction-categories" placeholder="انتخاب دسته‌بندی" required>
                 <datalist id="transaction-categories">
                     {% if categories %}
                         {% for cat in categories %}
-                            <option value="{{ cat['name'] if cat is mapping else (cat.name if cat.name is defined else cat) }}">
+                            <option value="{{ cat }}">
                         {% endfor %}
                     {% else %}
-                        <option value="خوراک">
-                        <option value="اجاره">
-                        <option value="حقوق">
-                        <option value="دستمزد">
-                        <option value="تفریح">
-                        <option value="حمل و نقل">
-                        <option value="خرید">
-                        <option value="قبوض">
-                        <option value="سایر">
+                        <option value="خوراک"><option value="اجاره"><option value="حقوق"><option value="دستمزد"><option value="تفریح"><option value="حمل و نقل"><option value="خرید"><option value="قبوض"><option value="سایر">
                     {% endif %}
                 </datalist>
             </div>
-
             <div class="input-group">
                 <label>نوع تراکنش</label>
                 <select name="type" required>
@@ -217,10 +199,7 @@
                     <option value="income">درآمد</option>
                 </select>
             </div>
-
-            <button type="submit" class="btn-submit">
-                + ثبت تراکنش
-            </button>
+            <button type="submit" class="btn-submit">+ ثبت تراکنش</button>
         </form>
     </section>
 
@@ -231,52 +210,9 @@
                 <span class="section-label">گزارش مالی</span>
                 <h2>تاریخچه تراکنش‌ها</h2>
             </div>
-            <span class="transaction-count">
-                {{ transactions|length }} تراکنش ثبت شده
-            </span>
+            <span class="transaction-count">{{ transactions|length }} تراکنش ثبت شده</span>
         </div>
 
-        <!-- فیلتر و جستجوی مدرن -->
-        <div class="filter-container">
-            <form action="{{ url_for('dashboard') }}" method="GET" class="modern-filter-form">
-                <div class="filter-row">
-                    <div class="filter-field search-field">
-                        <input type="text" name="search" placeholder="🔍 جستجو در عنوان، توضیoption value="تفریح">
-                        <option value="حمل و نقل">
-                        <option value="خرید">
-                        <option value="قبوض">
-                        <option value="سایر">
-                    {% endif %}
-                </datalist>
-            </div>
-
-            <div class="input-group">
-                <label>نوع تراکنش</label>
-                <select name="type" required>
-                    <option value="expense">هزینه</option>
-                    <option value="income">درآمد</option>
-                </select>
-            </div>
-
-            <button type="submit" class="btn-submit">
-                + ثبت تراکنش
-            </button>
-        </form>
-    </section>
-
-    <!-- Transactions Table & Filters -->
-    <section class="glass-card section-card">
-        <div class="section-heading transactions-heading">
-            <div>
-                <span class="section-label">گزارش مالی</span>
-                <h2>تاریخچه تراکنش‌ها</h2>
-            </div>
-            <span class="transaction-count">
-                {{ transactions|length }} تراکنش ثبت شده
-            </span>
-        </div>
-
-        <!-- فیلتر و جستجوی مدرن -->
         <div class="filter-container">
             <form action="{{ url_for('dashboard') }}" method="GET" class="modern-filter-form">
                 <div class="filter-row">
@@ -290,10 +226,7 @@
                             <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
                         </select>
                     </div>
-                    <div class="filter-field date_to or '' }}">
-                    </div>
                 </div>
-
                 <div class="filter-actions">
                     <button type="submit" class="btn-filter-apply">اعمال فیلترها</button>
                     <a href="{{ url_for('dashboard') }}" class="btn-filter-clear">پاک کردن</a>
@@ -305,8 +238,8 @@
             <table class="modern-table">
                 <thead>
                     <tr>
-                        <th>تاریخ و زمان</th>
-                        <th>عنوان و توضیحات</th>
+                        <th>تاریخ</th>
+                        <th>عنوان</th>
                         <th>دسته‌بندی</th>
                         <th>مبلغ</th>
                         <th>نوع</th>
@@ -316,44 +249,31 @@
                 <tbody>
                     {% for t in transactions %}
                     <tr>
-                        <td class="date-cell">{{ (t['created_at'] if 'created_at' in t.keys() else t['date']) | jalali }}</td>
+                        <td class="date-cell">{{ t['date'] }}</td>
                         <td class="description-cell">{{ t['title'] or '-' }}</td>
-                        <td>
-                            <span class="category-badge">{{ t['category'] or 'سایر' }}</span>
-                        </td>
+                        <td><span class="category-badge">{{ t['category'] or 'سایر' }}</span></td>
                         <td class="amount-cell">{{ "{:,.0f}".format(t['amount']|float) }} <small>تومان</small></td>
                         <td>
-                            {% if t['type'] in ['income', 'درآمد'] %}
+                            {% if t['type'] == 'income' %}
                                 <span class="type-badge income-badge">درآمد</span>
                             {% else %}
                                 <span class="type-badge expense-badge">هزینه</span>
                             {% endif %}
                         </td>
                         <td class="actions-cell">
-                            <a href="{{ url_for('edit_transaction', transaction_id=t['id']) }}" class="icon-btn edit-btn" title="ویرایش">
-                                ✏️
-                            </a>
-                            <a href="{{ url_for('delete_transaction', transaction_id=t['id']) }}" class="icon-btn delete-btn" title="حذف" onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟')">
-                                🗑️
-                            </a>
+                            <a href="{{ url_for('edit_transaction', transaction_id=t['id']) }}" class="icon-btn edit-btn" title="ویرایش">✏️</a>
+                            <a href="{{ url_for('delete_transaction', transaction_id=t['id']) }}" class="icon-btn delete-btn" title="حذف" onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟')">🗑️</a>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="empty-state">
-                            {% if search_query or selected_type or selected_category or time_preset or date_from or date_to %}
-                                هیچ تراکنشی با فیلترهای انتخابی پیدا نشد.
-                            {% else %}
-                                هنوز هیچ تراکنشی ثبت نشده است.
-                            {% endif %}
-                        </td>
+                        <td colspan="6" class="empty-state">هیچ تراکنشی پیدا نشد.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </section>
-
 </div>
 
 <script>
@@ -368,11 +288,7 @@
                 labels: chartLabels,
                 datasets: [{
                     data: chartData,
-                    backgroundColor: [
-                        '#a855f7', '#ec4899', '#3b82f6', 
-                        '#10b981', '#f59e0b', '#06b6d4', 
-                        '#8b5cf6', '#64748b'
-                    ],
+                    backgroundColor: ['#a855f7', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#64748b'],
                     borderColor: 'rgba(11, 9, 20, 0.8)',
                     borderWidth: 2
                 }]
@@ -382,11 +298,7 @@
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: {
-                            color: '#f8f7ff',
-                            font: { family: 'Vazirmatn', size: 12 },
-                            padding: 14
-                        }
+                        labels: { color: '#f8f7ff', font: { family: 'Vazirmatn', size: 12 }, padding: 14 }
                     }
                 }
             }
@@ -397,20 +309,6 @@
         if (chartElement) chartElement.style.display = 'none';
         if (noDataElement) noDataElement.style.display = 'block';
     }
-</script>
-
-<script>
-    window.addEventListener('beforeunload', () => {
-        sessionStorage.setItem('scrollPos', window.scrollY);
-    });
-
-    window.addEventListener('load', () => {
-        const scrollPos = sessionStorage.getItem('scrollPos');
-        if (scrollPos) {
-            window.scrollTo({ top: parseInt(scrollPos), behavior: 'instant' });
-            sessionStorage.removeItem('scrollPos');
-        }
-    });
 </script>
 </body>
 </html>

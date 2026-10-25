@@ -1,482 +1,618 @@
+import os
 import sqlite3
 import os
-<<<<<<< HEAD
-import csv
-import io
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session, flash,Response
-=======
 import io
 import csv
-from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response, Response, send_file
 from datetime import datetime
->>>>>>> 5ede1c7 (Fix export: generate xlsx with openpyxl instead of CSV)
 from werkzeug.security import generate_password_hash, check_password_hash
-from data.database import Database, farsi
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment
 
-db = Database()
-
-app = Flask(__name__)
-app.secret_key = "your_secret_key_here"
+# مسیر واقعی دیتابیس
 DB_PATH = os.path.join('data', 'finance.db')
 
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "a_long_random_secret_key_for_dev_only_change_me")
+
+
+# ---------------------------------------------------------------
+#  دسترسی به دیتابیس
+# ---------------------------------------------------------------
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-@app.route("/")
-def home():
-    if "user_id" in session:
-        return redirect(url_for("dashboard"))
-    return redirect(url_for("login"))
 
-@app.route("/register", methods=["GET", "POST"])
+def init_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.executescript('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at TEXT,
+                updated_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                amount REAL NOT NULL,
+                type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+                category TEXT,
+                date TEXT NOT NULL,
+                created_at TEXT,
+                updated_at TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS budgets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                category TEXT NOT NULL,
+                limit_amount REAL NOT NULL,
+                month TEXT NOT NULL,
+                created_at TEXT,
+                updated_at TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE(user_id, category, month)
+            );
+        ''')
+        conn.commit()
+        print("Database initialized.")
+    except sqlite3.Error as e:
+        print(f"DB init error: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------
+#  مسیرهای عمومی
+# ---------------------------------------------------------------
+@app.route('/')
+def index():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+
+@app.route('/register', methods=['GET', 'POST'])
 def register():
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
 
         if not username or not password:
-            flash("لطفاً تمامی فیلدها را پر کنید.", "danger")
-            return render_template("register.html")
+            flash('نام کاربری و رمز عبور الزامی است.', 'warning')
+            return render_template('register.html')
 
-        password_hash = generate_password_hash(password)
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
+        conn = get_db_connection()
         try:
-            with db.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO users (username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?)",
-                    (username, password_hash, now, now)
-                )
-                conn.commit()
-            print(farsi(f"کاربر جدید ثبت شد: {username}"))
-            return redirect(url_for("login"))
-        except sqlite3.IntegrityError:
-            flash("این نام کاربری قبلاً ثبت شده است.", "danger")
-            return render_template("register.html")
+            exists = conn.execute(
+                'SELECT id FROM users WHERE username = ?', (username,)
+            ).fetchone()
+            if exists:
+                flash('این نام کاربری قبلاً ثبت شده است.', 'warning')
+                return render_template('register.html')
 
-    return render_template("register.html")
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            conn.execute(
+                'INSERT INTO users (username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?)',
+                (username, generate_password_hash(password), now, now)
+            )
+            conn.commit()
+            flash('ثبت نام با موفقیت انجام شد. لطفاً وارد شوید.', 'success')
+            return redirect(url_for('login'))
+        except sqlite3.Error as e:
+            print(f"Register DB error: {e}")
+            flash('خطایی در ثبت نام رخ داد.', 'danger')
+            return render_template('register.html')
+        finally:
+            conn.close()
 
-@app.route("/login", methods=["GET", "POST"])
+    return render_template('register.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
 
-        with db.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, username, password_hash FROM users WHERE username = ?", (username,))
-            user = cursor.fetchone()
+        conn = get_db_connection()
+        try:
+            user = conn.execute(
+                'SELECT id, username, password_hash FROM users WHERE username = ?', (username,)
+            ).fetchone()
 
-        if user and check_password_hash(user["password_hash"], password):
-            session.clear()
-            session["user_id"] = user["id"]
-            session["username"] = user["username"]
-            print(farsi(f"ورود موفق: {username}"))
-            return redirect(url_for("dashboard"))
-        else:
-            flash("نام کاربری یا رمز عبور اشتباه است.", "danger")
-            return render_template("login.html")
+            if user and check_password_hash(user['password_hash'], password):
+                session.clear()
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                flash('ورود شما موفقیت‌آمیز بود.', 'success')
+                return redirect(url_for('dashboard'))
 
-    return render_template("login.html")
+            flash('نام کاربری یا رمز عبور اشتباه است.', 'danger')
+            return render_template('login.html')
+        except sqlite3.Error as e:
+            print(f"Login DB error: {e}")
+            flash('خطایی در ورود رخ داد.', 'danger')
+            return render_template('login.html')
+        finally:
+            conn.close()
 
-@app.route("/logout")
+    return render_template('login.html')
+
+
+@app.route('/logout')
 def logout():
-    username = session.get("username", "unknown")
     session.clear()
-    print(farsi(f"خروج کاربر: {username}"))
-    return redirect(url_for("login"))
+    flash('با موفقیت از حساب خارج شدید.', 'info')
+    return redirect(url_for('login'))
 
-@app.route("/forgot-password", methods=["GET", "POST"])
-def forgot_password():
-    if request.method == "POST":
-        flash("قابلیت بازیابی رمز عبور به زودی فعال خواهد شد.", "warning")
-        return redirect(url_for("login"))
-    return render_template("forgot_password.html")
 
-# ==========================================
-# داشبورد و مدیریت تراکنش‌ها
-# ==========================================
-
+# ---------------------------------------------------------------
+#  داشبورد
+# ---------------------------------------------------------------
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
+        flash('لطفاً برای مشاهده داشبورد وارد شوید.', 'warning')
         return redirect(url_for('login'))
 
     user_id = session['user_id']
     current_month = datetime.now().strftime('%Y-%m')
-    
-    # فیلترها
-    search = request.args.get('search', '').strip()
+
+    search_query = request.args.get('search', '').strip()
     t_type_filter = request.args.get('type', '').strip()
     category_filter = request.args.get('category', '').strip()
 
     conn = get_db_connection()
+    try:
+        all_txns = conn.execute(
+            'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, id DESC',
+            (user_id,)
+        ).fetchall()
 
-    # واکشی همه تراکنش‌ها برای محاسبات خلاصه و نمودار
-    all_txns = conn.execute('SELECT * FROM transactions WHERE user_id = ?', (user_id,)).fetchall()
-    total_income = sum(t['amount'] for t in all_txns if t['type'] == 'income')
-    total_expense = sum(t['amount'] for t in all_txns if t['type'] == 'expense')
-    balance = total_income - total_expense
+        total_income = sum(t['amount'] for t in all_txns if t['type'] == 'income')
+        total_expense = sum(t['amount'] for t in all_txns if t['type'] == 'expense')
+        balance = total_income - total_expense
 
-    # لیست دسته‌بندی‌های یکتا برای منوی فیلتر
-    categories = sorted(list(set(t['category'] for t in all_txns if t['category'])))
+        categories = sorted(set(t['category'] for t in all_txns if t['category']))
 
-    # ساخت کوئری داینامیک تراکنش‌ها بر اساس فیلتر
-    query = "SELECT * FROM transactions WHERE user_id = ?"
-    params = [user_id]
-    
-    if search:
-        query += " AND (title LIKE ? OR category LIKE ?)"
-        params.extend([f"%{search}%", f"%{search}%"])
-    if t_type_filter:
-        query += " AND type = ?"
-        params.append(t_type_filter)
-    if category_filter:
-        query += " AND category = ?"
-        params.append(category_filter)
-        
-    query += " ORDER BY date DESC, id DESC"
-    transactions = conn.execute(query, params).fetchall()
+        # ساخت پرس‌وجوی فیلترشده
+        query = 'SELECT * FROM transactions WHERE user_id = ?'
+        params = [user_id]
 
-    # نمودار تفکیک هزینه‌ها
-    expenses = [t for t in all_txns if t['type'] == 'expense']
-    category_totals = {}
-    for t in expenses:
-        cat = t['category'] or 'سایر'
-        category_totals[cat] = category_totals.get(cat, 0) + t['amount']
-    
-    chart_labels = list(category_totals.keys())
-    chart_data = list(category_totals.values())
+        if search_query:
+            query += " AND (title LIKE ? OR category LIKE ?)"
+            params.extend([f"%{search_query}%", f"%{search_query}%"])
+        if t_type_filter:
+            query += ' AND type = ?'
+            params.append(t_type_filter)
+        if category_filter:
+            query += ' AND category = ?'
+            params.append(category_filter)
 
-    # وضعیت بودجه
-    budgets = conn.execute('SELECT * FROM budgets WHERE user_id = ? AND month = ?', (user_id, current_month)).fetchall()
-    budgets_status = []
-    for b in budgets:
-        spent_row = conn.execute('''
-            SELECT SUM(amount) FROM transactions 
-            WHERE user_id = ? AND category = ? AND type = 'expense' AND strftime('%Y-%m', date) = ?
-        ''', (user_id, b['category'], current_month)).fetchone()
-        spent = spent_row[0] if (spent_row and spent_row[0]) else 0
-        
-        percentage = (spent / b['limit_amount'] * 100) if b['limit_amount'] > 0 else 0
-        
-        budgets_status.append({
-            'id': b['id'],
-            'category': b['category'],
-            'limit_amount': b['limit_amount'],
-            'spent_amount': spent,
-            'percentage': round(percentage, 1)
-        })
+        query += ' ORDER BY date DESC, id DESC'
+        transactions = conn.execute(query, params).fetchall()
 
-    conn.close()
+        # داده چارت هزینه‌ها بر اساس دسته‌بندی
+        category_totals = {}
+        for t in all_txns:
+            if t['type'] == 'expense':
+                cat = t['category'] or 'سایر'
+                category_totals[cat] = category_totals.get(cat, 0) + t['amount']
 
-    return render_template(
-        'dashboard.html',
-        transactions=transactions,
-        total_income=total_income,
-        total_expense=total_expense,
-        balance=balance,
-        chart_labels=chart_labels,
-        chart_data=chart_data,
-        budgets_status=budgets_status,
-        current_month=current_month,
-        categories=categories,
-        search_query=search,
-        selected_type=t_type_filter,
-        selected_category=category_filter
-    )
-@app.route('/export/csv')
-def export_csv():
-    user_id = session.get('user_id')
-    if not user_id:
+        chart_labels = list(category_totals.keys())
+        chart_data = list(category_totals.values())
+
+        # بودجه‌های ماه جاری
+        budgets = conn.execute(
+            'SELECT * FROM budgets WHERE user_id = ? AND month = ?',
+            (user_id, current_month)
+        ).fetchall()
+
+        budgets_status = []
+        for b in budgets:
+            spent_row = conn.execute(
+                "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND category = ? AND type = 'expense' AND strftime('%Y-%m', date) = ?",
+                (user_id, b['category'], current_month)
+            ).fetchone()
+            spent = spent_row[0] if spent_row and spent_row[0] else 0.0
+            limit = b['limit_amount']
+            percentage = (spent / limit * 100) if limit > 0 else 0
+
+            budgets_status.append({
+                'id': b['id'],
+                'category': b['category'],
+                'limit_amount': limit,
+                'spent_amount': spent,
+                'percentage': round(percentage, 1)
+            })
+
+        return render_template(
+            'dashboard.html',
+            username=session.get('username'),
+            transactions=transactions,
+            all_transactions=all_txns,
+            total_income=total_income,
+            total_expense=total_expense,
+            balance=balance,
+            categories=categories,
+            chart_labels=chart_labels,
+            chart_data=chart_data,
+            budgets=budgets,
+            budgets_status=budgets_status,
+            search_query=search_query,
+            type_filter=t_type_filter,
+            category_filter=category_filter
+        )
+
+    except sqlite3.Error as e:
+        print(f"Dashboard DB error: {e}")
+        flash('خطایی در بارگذاری داشبورد رخ داد.', 'danger')
         return redirect(url_for('login'))
-    
-    conn = get_db_connection()
-    transactions = conn.execute('''
-        SELECT title, amount, type, created_at 
-        FROM transactions 
-        WHERE user_id = ? 
-        ORDER BY created_at DESC
-    ''', (user_id,)).fetchall()
-    conn.close()
-
-    # ساخت ورک‌بوک اکسل
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "تراکنش‌ها"
-    ws.views.sheetView[0].rightToLeft = True
-
-    # سربرگ‌ها
-    headers = ['عنوان', 'مبلغ (تومان)', 'نوع', 'تاریخ']
-    ws.append(headers)
-
-    # استایل سربرگ (بنفش با متن سفید)
-    header_fill = PatternFill(start_color="7C3AED", end_color="7C3AED", fill_type="solid")
-    header_font = Font(name="Tahoma", size=11, bold=True, color="FFFFFF")
-    center_align = Alignment(horizontal="center", vertical="center")
-
-    for col_num in range(1, 5):
-        cell = ws.cell(row=1, column=col_num)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = center_align
-
-    # درج داده‌ها
-    for t in transactions:
-        t_type = 'درآمد' if t['type'] == 'income' else 'هزینه'
-        ws.append([t['title'], t['amount'], t_type, t['created_at']])
-
-    # تنظیم عرض ستون‌ها
-    column_widths = {'A': 25, 'B': 18, 'C': 12, 'D': 22}
-    for col, width in column_widths.items():
-        ws.column_dimensions[col].width = width
-
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    return send_file(
-        output,
-        as_attachment=True,
-        download_name='transactions_report.xlsx',
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-@app.route('/export/print')
-def export_print():
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect(url_for('login'))
-    
-    conn = get_db_connection()
-    transactions = conn.execute('''
-        SELECT title, amount, type, created_at 
-        FROM transactions 
-        WHERE user_id = ? 
-        ORDER BY created_at DESC
-    ''', (user_id,)).fetchall()
-    conn.close()
-    
-    return render_template('report.html', transactions=transactions)
+    finally:
+        conn.close()
 
 
-
-@app.route("/add_transaction", methods=["POST"])
+# ---------------------------------------------------------------
+#  مدیریت تراکنش‌ها
+# ---------------------------------------------------------------
+@app.route('/add_transaction', methods=['POST'])
 def add_transaction():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
+    if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
+        return redirect(url_for('login'))
 
-    user_id = session["user_id"]
-    title = request.form.get("title", "").strip()
-    category = request.form.get("category", "").strip() or "سایر"
-    t_type = request.form.get("type", "").strip()
-    date = request.form.get('date') or datetime.now().strftime('%Y-%m-%d')
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    title = request.form.get('title', '').strip()
+    amount = request.form.get('amount', '').strip()
+    t_type = request.form.get('type', '').strip()
+    category = request.form.get('category', '').strip()
+    date = request.form.get('date', '').strip() or datetime.now().strftime('%Y-%m-%d')
+
+    if not title or not amount or not t_type:
+        flash('عنوان، مبلغ و نوع تراکنش الزامی است.', 'warning')
+        return redirect(url_for('dashboard'))
 
     try:
-        amount = float(request.form.get("amount", 0))
+        amount = float(amount)
         if amount <= 0:
             raise ValueError
-    except (ValueError, TypeError):
-        flash(farsi("مبلغ وارد شده معتبر نیست."), "danger")
-        return redirect(url_for("dashboard"))
+    except ValueError:
+        flash('مبلغ وارد شده معتبر نیست.', 'danger')
+        return redirect(url_for('dashboard'))
 
-    with db.get_connection() as conn:
-        cursor = conn.cursor()
-
-        if t_type == "expense":
-            cursor.execute(
-                "SELECT limit_amount FROM budgets WHERE user_id = ? AND category = ?",
-                (user_id, category)
-            )
-            budget_row = cursor.fetchone()
-
-            if budget_row and budget_row[0] and budget_row[0] > 0:
-                limit = float(budget_row[0])
-                cursor.execute(
-                    "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND category = ? AND type = 'expense'",
-                    (user_id, category)
-                )
-                sum_row = cursor.fetchone()
-                current_spent = float(sum_row[0]) if (sum_row and sum_row[0]) else 0.0
-                new_total = current_spent + amount
-
-                if new_total > limit:
-                    flash(farsi(f"خطا: ثبت این هزینه ({amount:,.0f}) باعث عبور از سقف بودجه دسته '{category}' ({limit:,.0f}) می‌شود!"), "danger")
-                    return redirect(url_for("dashboard"))
-
-                if new_total >= (limit * 0.8):
-                    flash(farsi(f"هشدار: با ثبت این هزینه به بیش از ۸۰٪ سقف بودجه دسته '{category}' رسیدید."), "warning")
-
-        cursor.execute(
-            """INSERT INTO transactions (user_id, title, amount, type, category, date, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, title, amount, t_type, category, date, now)
+    conn = get_db_connection()
+    try:
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conn.execute(
+            '''INSERT INTO transactions
+               (user_id, title, amount, type, category, date, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+            (session['user_id'], title, amount, t_type, category or None, date, now, now)
         )
         conn.commit()
-
-    flash("تراکنش با موفقیت ثبت شد.", "success")
-    return redirect(url_for("dashboard"))
-
-@app.route('/edit_transaction/<int:transaction_id>', methods=['GET', 'POST'])
-def edit_transaction(transaction_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    conn = get_db_connection()
-    txn = conn.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, session['user_id'])).fetchone()
-    
-    if txn is None:
+        flash('تراکنش با موفقیت ثبت شد.', 'success')
+    except sqlite3.Error as e:
+        print(f"Add txn DB error: {e}")
+        flash('خطایی در ثبت تراکنش رخ داد.', 'danger')
+        conn.rollback()
+    finally:
         conn.close()
-        flash("تراکنش مورد نظر یافت نشد.", "danger")
-        return redirect(url_for('dashboard'))
 
-    if request.method == 'POST':
-        amount = request.form.get('amount')
-        title = request.form.get('title', '').strip()
-        category = request.form.get('category', '').strip() or "سایر"
-        txn_type = request.form.get('type')
-        
-        conn.execute('''
-            UPDATE transactions 
-            SET amount = ?, title = ?, category = ?, type = ?
-            WHERE id = ? AND user_id = ?
-        ''', (amount, title, category, txn_type, transaction_id, session['user_id']))
-        conn.commit()
-        conn.close()
-        flash("تراکنش با موفقیت ویرایش شد.", "success")
-        return redirect(url_for('dashboard'))
-
-    conn.close()
-    return render_template('edit_transaction.html', transaction=txn)
-
-@app.route('/delete_transaction/<int:transaction_id>')
-def delete_transaction(transaction_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    conn = get_db_connection()
-    conn.execute('DELETE FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, session['user_id']))
-    conn.commit()
-    conn.close()
-    flash("تراکنش با موفقیت حذف شد.", "success")
     return redirect(url_for('dashboard'))
 
+
+@app.route('/edit_transaction/<int:txn_id>', methods=['GET', 'POST'])
+def edit_transaction(txn_id):
+    if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    try:
+        txn = conn.execute(
+            'SELECT * FROM transactions WHERE id = ? AND user_id = ?',
+            (txn_id, session['user_id'])
+        ).fetchone()
+
+        if not txn:
+            flash('تراکنش یافت نشد.', 'danger')
+            return redirect(url_for('dashboard'))
+
+        if request.method == 'POST':
+            title = request.form.get('title', '').strip()
+            amount = request.form.get('amount', '').strip()
+            t_type = request.form.get('type', '').strip()
+            category = request.form.get('category', '').strip()
+            date = request.form.get('date', '').strip()
+
+            if not title or not amount or not t_type or not date:
+                flash('همه فیلدهای اجباری را پر کنید.', 'warning')
+                return render_template('edit_transaction.html', txn=txn)
+
+            try:
+                amount = float(amount)
+                if amount <= 0:
+                    raise ValueError
+            except ValueError:
+                flash('مبلغ وارد شده معتبر نیست.', 'danger')
+                return render_template('edit_transaction.html', txn=txn)
+
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            conn.execute(
+                '''UPDATE transactions SET
+                   title = ?, amount = ?, type = ?, category = ?, date = ?, updated_at = ?
+                   WHERE id = ? AND user_id = ?''',
+                (title, amount, t_type, category or None, date, now, txn_id, session['user_id'])
+            )
+            conn.commit()
+            flash('تراکنش با موفقیت ویرایش شد.', 'success')
+            return redirect(url_for('dashboard'))
+
+        return render_template('edit_transaction.html', txn=txn)
+
+    except sqlite3.Error as e:
+        print(f"Edit txn DB error: {e}")
+        flash('خطایی در ویرایش تراکنش رخ داد.', 'danger')
+        return redirect(url_for('dashboard'))
+    finally:
+        conn.close()
+
+
+@app.route('/delete_transaction/<int:txn_id>', methods=['POST'])
+def delete_transaction(txn_id):
+    if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    try:
+        result = conn.execute(
+            'DELETE FROM transactions WHERE id = ? AND user_id = ?',
+            (txn_id, session['user_id'])
+        )
+        conn.commit()
+        if result.rowcount > 0:
+            flash('تراکنش حذف شد.', 'success')
+        else:
+            flash('تراکنش یافت نشد.', 'warning')
+    except sqlite3.Error as e:
+        print(f"Delete txn DB error: {e}")
+        flash('خطایی در حذف تراکنش رخ داد.', 'danger')
+        conn.rollback()
+    finally:
+        conn.close()
+
+    return redirect(url_for('dashboard'))
+
+
+# ---------------------------------------------------------------
+#  مدیریت بودجه
+# ---------------------------------------------------------------
 @app.route('/set_budget', methods=['POST'])
 def set_budget():
     if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
         return redirect(url_for('login'))
 
-    user_id = session['user_id']
-    category = request.form.get('category', '').strip()
-    month = request.form.get('month', datetime.now().strftime('%Y-%m')).strip()
-
-    if not category:
-        flash('دسته‌بندی بودجه را انتخاب کنید.', 'danger')
-        return redirect(url_for('dashboard'))
+    category = request.form.get('category', '').strip() or 'سایر'
+    limit_amount = request.form.get('limit_amount', '').strip()
+    month = request.form.get('month', '').strip() or datetime.now().strftime('%Y-%m')
 
     try:
-        limit_amount = float(request.form.get('limit_amount', ''))
+        limit_amount = float(limit_amount)
         if limit_amount <= 0:
             raise ValueError
-    except (ValueError, TypeError):
-        flash('مبلغ بودجه باید یک عدد مثبت باشد.', 'danger')
+    except ValueError:
+        flash('مبلغ بودجه معتبر نیست.', 'danger')
         return redirect(url_for('dashboard'))
 
     conn = get_db_connection()
-    existing = conn.execute(
-        'SELECT id FROM budgets WHERE user_id = ? AND category = ? AND month = ? LIMIT 1',
-        (user_id, category, month)
-    ).fetchone()
-
-    if existing:
-        conn.execute('UPDATE budgets SET limit_amount = ? WHERE id = ?', (limit_amount, existing['id']))
-    else:
+    try:
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
-            'INSERT INTO budgets (user_id, category, limit_amount, month, created_at) VALUES (?, ?, ?, ?, ?)',
-            (user_id, category, limit_amount, month, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            '''INSERT INTO budgets (user_id, category, limit_amount, month, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(user_id, category, month)
+               DO UPDATE SET limit_amount = excluded.limit_amount, updated_at = excluded.updated_at''',
+            (session['user_id'], category, limit_amount, month, now, now)
         )
+        conn.commit()
+        flash('بودجه با موفقیت ذخیره شد.', 'success')
+    except sqlite3.Error as e:
+        print(f"Set budget DB error: {e}")
+        flash('خطایی در ذخیره بودجه رخ داد.', 'danger')
+        conn.rollback()
+    finally:
+        conn.close()
 
-    conn.commit()
-    conn.close()
-    flash('بودجه با موفقیت ذخیره شد.', 'success')
     return redirect(url_for('dashboard'))
 
-@app.route('/delete_budget/<int:id>')
-def delete_budget(id):
+
+@app.route('/delete_budget/<int:budget_id>', methods=['POST'])
+def delete_budget(budget_id):
     if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
         return redirect(url_for('login'))
-    
+
     conn = get_db_connection()
-    conn.execute('DELETE FROM budgets WHERE id = ? AND user_id = ?', (id, session['user_id']))
-    conn.commit()
-    conn.close()
-    flash('بودجه با موفقیت حذف شد.', 'success')
+    try:
+        result = conn.execute(
+            'DELETE FROM budgets WHERE id = ? AND user_id = ?',
+            (budget_id, session['user_id'])
+        )
+        conn.commit()
+        if result.rowcount > 0:
+            flash('بودجه حذف شد.', 'success')
+        else:
+            flash('بودجه یافت نشد.', 'warning')
+    except sqlite3.Error as e:
+        print(f"Delete budget DB error: {e}")
+        flash('خطایی در حذف بودجه رخ داد.', 'danger')
+        conn.rollback()
+    finally:
+        conn.close()
+
     return redirect(url_for('dashboard'))
 
-@app.route("/profile")
+
+# ---------------------------------------------------------------
+#  خروجی گزارش
+# ---------------------------------------------------------------
+@app.route('/export_transactions')
+def export_transactions():
+    if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    try:
+        transactions = conn.execute(
+            'SELECT title, category, type, amount, date FROM transactions WHERE user_id = ? ORDER BY date DESC, id DESC',
+            (session['user_id'],)
+        ).fetchall()
+
+        if not transactions:
+            flash('هیچ تراکنشی برای خروجی وجود ندارد.', 'warning')
+            return redirect(url_for('dashboard'))
+
+        output = io.StringIO()
+        csv_writer = csv.writer(output)
+        csv_writer.writerow(['عنوان', 'دسته‌بندی', 'نوع', 'مبلغ', 'تاریخ'])
+
+        type_map = {'income': 'درآمد', 'expense': 'هزینه'}
+        for t in transactions:
+            csv_writer.writerow([
+                t['title'],
+                t['category'] or 'سایر',
+                type_map.get(t['type'], t['type']),
+                t['amount'],
+                t['date']
+            ])
+
+        csv_data = '\ufeff' + output.getvalue()
+
+        filename = f"transactions_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        response = make_response(csv_data)
+        response.headers['Content-Disposition'] = f"attachment; filename={filename}"
+        response.headers['Content-type'] = 'text/csv; charset=utf-8'
+        return response
+
+    except sqlite3.Error as e:
+        print(f"Export DB error: {e}")
+        flash('خطایی در تهیه خروجی رخ داد.', 'danger')
+        return redirect(url_for('dashboard'))
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------
+#  پروفایل کاربر
+# ---------------------------------------------------------------
+@app.route('/profile')
 def profile():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
+    if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
+        return redirect(url_for('login'))
 
-    with db.get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT username, created_at, updated_at FROM users WHERE id = ?", (session["user_id"],))
-        user = cursor.fetchone()
+    conn = get_db_connection()
+    try:
+        user = conn.execute(
+            'SELECT id, username, created_at, updated_at FROM users WHERE id = ?',
+            (session['user_id'],)
+        ).fetchone()
 
-    return render_template("profile.html", user=user)
+        if not user:
+            flash('کاربر یافت نشد. لطفاً دوباره وارد شوید.', 'danger')
+            session.clear()
+            return redirect(url_for('login'))
 
-@app.route("/change_username", methods=["GET", "POST"])
+        return render_template('profile.html', user=user)
+
+    except sqlite3.Error as e:
+        print(f"Profile DB error: {e}")
+        flash('خطایی در بارگذاری پروفایل رخ داد.', 'danger')
+        return redirect(url_for('dashboard'))
+    finally:
+        conn.close()
+
+
+@app.route('/change_username', methods=['POST'])
 def change_username():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
+    if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
+        return redirect(url_for('login'))
 
-    if request.method == "POST":
-        new_username = request.form.get("new_username", "").strip()
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    new_username = request.form.get('username', '').strip()
 
-        if not new_username:
-            flash("نام کاربری نمی‌تواند خالی باشد.", "danger")
-            return redirect(url_for("change_username"))
+    if not new_username:
+        flash('نام کاربری جدید الزامی است.', 'warning')
+        return redirect(url_for('profile'))
 
-        try:
-            with db.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "UPDATE users SET username = ?, updated_at = ? WHERE id = ?",
-                    (new_username, now, session["user_id"])
-                )
-                conn.commit()
-                session["username"] = new_username
-                flash("نام کاربری با موفقیت تغییر کرد.", "success")
-                return redirect(url_for("dashboard"))
-        except sqlite3.IntegrityError:
-            flash("این نام کاربری قبلاً انتخاب شده است.", "danger")
-            return redirect(url_for("change_username"))
+    conn = get_db_connection()
+    try:
+        exists = conn.execute(
+            'SELECT id FROM users WHERE username = ? AND id != ?',
+            (new_username, session['user_id'])
+        ).fetchone()
 
-    return render_template("change_username.html")
+        if exists:
+            flash('این نام کاربری قبلاً استفاده شده است.', 'warning')
+            return redirect(url_for('profile'))
 
-@app.route("/change_password", methods=["GET", "POST"])
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conn.execute(
+            'UPDATE users SET username = ?, updated_at = ? WHERE id = ?',
+            (new_username, now, session['user_id'])
+        )
+        conn.commit()
+        session['username'] = new_username
+        flash('نام کاربری با موفقیت تغییر کرد.', 'success')
+    except sqlite3.Error as e:
+        print(f"Change username DB error: {e}")
+        flash('خطایی در تغییر نام کاربری رخ داد.', 'danger')
+        conn.rollback()
+    finally:
+        conn.close()
+
+    return redirect(url_for('profile'))
+
+
+@app.route('/change_password', methods=['POST'])
 def change_password():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
+    if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
+        return redirect(url_for('login'))
 
-    if request.method == "POST":
-        current_password = request.form.get("current_password", "").strip()
-        new_password = request.form.get("new_password", "").strip()
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_password = request.form.get('current_password', '')
+    new_password = request.form.get('new_password', '')
+    confirm_password = request.form.get('confirm_password', '')
 
-        with db.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT password_hash FROM users WHERE id = ?", (session["user_id"],))
-            user = cursor.fetchone()
+    if not current_password or not new_password or not confirm_password:
+        flash('همه فیلدها را پر کنید.', 'warning')
+        return redirect(url_for('profile'))
+
+    if new_password != confirm_password:
+        flash('رمز جدید و تکرار آن یکسان نیستند.', 'warning')
+        return redirect(url_for('profile'))
+
+    if len(new_password) < 8:
+        flash('رمز جدید باید حداقل ۸ کاراکتر باشد.', 'warning')
+        return redirect(url_for('profile'))
+
+    conn = get_db_connection()
+    try:
+        user = conn.execute(
+            'SELECT password_hash FROM users WHERE id = ?',
+            (session['user_id'],)
+        ).fetchone()
 
             if not user or not check_password_hash(user["password_hash"], current_password):
                 flash("رمز عبور فعلی نادرست است.", "danger")
@@ -494,58 +630,9 @@ def change_password():
             conn.commit()
             flash("رمز عبور با موفقیت به‌روزرسانی شد.", "success")
             return redirect(url_for("dashboard"))
-        return redirect(url_for("profile"))
-@app.route('/export/csv')
-def export_csv():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    conn = get_db_connection()
-    transactions = conn.execute(
-        'SELECT * FROM transactions WHERE user_id = ? ORDER BY id DESC',
-        (session['user_id'],)
-    ).fetchall()
-    conn.close()
 
-    output = io.StringIO()
-    output.write('sep=;\n')
-    writer = csv.writer(output, delimiter=';')
-    writer.writerow(['ردیف', 'نوع', 'مبلغ', 'دسته‌بندی', 'توضیحات', 'تاریخ'])
+    return render_template("change_password.html")
 
-    for idx, t in enumerate(transactions, 1):
-        row = dict(t)
-        t_type = 'درآمد' if row.get('type') == 'income' else 'هزینه'
-        amount = row.get('amount', 0)
-        category = row.get('category') or row.get('category_id') or '-'
-        description = row.get('description') or row.get('title') or ''
-        date = row.get('date') or row.get('created_at') or '-'
-
-        writer.writerow([idx, t_type, amount, category, description, date])
-
-    output.seek(0)
-    return Response(
-        output.getvalue().encode('utf-8-sig'),
-        mimetype='text/csv; charset=utf-8',
-        headers={'Content-Disposition': 'attachment; filename=transactions_report.csv'}
-    )
-
-@app.route('/export/pdf')
-def export_pdf():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    conn = get_db_connection()
-    transactions = conn.execute(
-        'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC',
-        (session['user_id'],)
-    ).fetchall()
-    conn.close()
-
-    return render_template('report.html', transactions=transactions)
-
-# ==========================================
-# اجرای برنامه
-# ==========================================
 if __name__ == "__main__":
     db.init_db()
     app.run(debug=True)
