@@ -5,6 +5,11 @@ import io
 import csv
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+import database as db
+
 
 # مسیر واقعی دیتابیس
 DB_PATH = os.path.join('data', 'finance.db')
@@ -606,7 +611,6 @@ def change_password():
     if len(new_password) < 8:
         flash('رمز جدید باید حداقل ۸ کاراکتر باشد.', 'warning')
         return redirect(url_for('profile'))
-
     conn = get_db_connection()
     try:
         user = conn.execute(
@@ -614,24 +618,27 @@ def change_password():
             (session['user_id'],)
         ).fetchone()
 
-            if not user or not check_password_hash(user["password_hash"], current_password):
-                flash("رمز عبور فعلی نادرست است.", "danger")
-                return redirect(url_for("change_password"))
+        if not user or not check_password_hash(user["password_hash"], current_password):
+            flash("رمز عبور فعلی نادرست است.", "danger")
+            return redirect(url_for("profile"))
 
-            if len(new_password) < 6:
-                flash("رمز عبور جدید باید حداقل ۶ کاراکتر باشد.", "danger")
-                return redirect(url_for("change_password"))
+        new_hash = generate_password_hash(new_password)
+        now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-            new_hash = generate_password_hash(new_password)
-            cursor.execute(
-                "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
-                (new_hash, now, session["user_id"])
-            )
-            conn.commit()
-            flash("رمز عبور با موفقیت به‌روزرسانی شد.", "success")
-            return redirect(url_for("dashboard"))
+        conn.execute(
+            "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
+            (new_hash, now, session["user_id"])
+        )
+        conn.commit()
+        flash("رمز عبور با موفقیت به‌روزرسانی شد.", "success")
+        return redirect(url_for("dashboard"))
+    except Exception as e:
+        conn.rollback()
+        flash("خطایی در تغییر رمز عبور رخ داد.", "danger")
+        return redirect(url_for("profile"))
+    finally:
+        conn.close()
 
-    return render_template("change_password.html")
 
 if __name__ == "__main__":
     db.init_db()
