@@ -156,8 +156,7 @@
                 <p>دریافت سوابق مالی در قالب فایل اکسل یا سند PDF</p>
             </div>
             <div class="btn-group">
-                <a href="{{ url_for('export_csv') }}" class="btn btn-export-excel">خروجی اکسل (CSV)</a>
-                <a href="{{ url_for('export_pdf') }}" target="_blank" class="btn btn-export-pdf">دریافت PDF</a>
+                <a href="{{ url_for('export_transactions') }}" class="btn btn-export-excel">خروجی اکسل (CSV)</a>
             </div>
         </div>
 
@@ -208,18 +207,23 @@
         </div>
 
         <!-- بخش خروجی و گزارشات -->
-        <div class="glass-card export-card">
-            <h3>گزارش‌گیری و خروجی داده‌ها</h3>
-            <p>می‌توانید تمامی تراکنش‌های ثبت‌شده خود را با فرمت استاندارد دانلود کنید:</p>
-            <div class="export-actions">
-                <a href="{{ url_for('export_excel') }}" class="btn btn-export-excel">
-                    📥 دریافت فایل اکسل (Excel)
-                </a>
-                <a href="{{ url_for('export_pdf') }}" class="btn btn-export-pdf">
-                    📄 دریافت گزارش PDF
-                </a>
-            </div>
-        </div>
+                <!-- بخش خروجی و گزارشات -->
+                <div class="glass-card export-card">
+                    <div>
+                        <h3>گزارش‌گیری و خروجی داده‌ها</h3>
+                        <p>می‌توانید تمامی تراکنش‌های ثبت‌شده خود را با فرمت استاندارد دانلود کنید:</p>
+                    </div>
+                    <div class="export-actions">
+                        <a href="{{ url_for('export_transactions') }}" class="btn btn-export-excel">
+                            📥 دریافت فایل اکسل (Excel)
+                        </a>
+                        <!-- دکمه PDF موقتاً غیرفعال شد تا بعداً پیاده‌سازی شود -->
+                        <a href="#" class="btn btn-export-pdf" style="opacity: 0.5; pointer-events: none;">
+                            📄 دریافت گزارش PDF (به‌زودی)
+                        </a>
+                    </div>
+                </div>
+        
 
     </div>
 

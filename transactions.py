@@ -15,7 +15,7 @@ EXPENSE_CATEGORIES = ["خوراک", "اجاره", "حمل و نقل", "تفری�
 
 def validate_amount(val):
     try:
-        clean_val = parse_farsi_number(str(val)).replace(",", "")
+        clean_val = parse_farsi_number(str(val))
         amount = int(clean_val)
         return amount if amount > 0 else None
     except (ValueError, TypeError):

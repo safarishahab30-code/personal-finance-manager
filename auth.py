@@ -179,18 +179,14 @@ def strength_label(score):
         return "قوی"
 
     return "خیلی قوی"
-
-
 def check_password_strength(password):
-    if len(password) < 8:
-        return "حداقل طول رمز باید ۸ کاراکتر باشد."
-    if not any(c.isupper() for c in password):
-        return "باید حداقل یک حرف بزرگ انگلیسی داشته باشد."
-    if not any(c.islower() for c in password):
-        return "باید حداقل یک حرف کوچک انگلیسی داشته باشد."
-    if not any(c.isdigit() for c in password):
-        return "باید حداقل یک عدد داشته باشد."
-    return None
+    if len(password) < 6:
+        return False, "رمز عبور کوتاه است"
+    if not any(char.isdigit() for char in password):
+        return False, "رمز عبور باید شامل عدد باشد"
+    if not any(char.isalpha() for char in password):
+        return False, "رمز عبور باید شامل حروف باشد"
+    return True, "رمز عبور معتبر است"
 
 def generate_strong_password(length=12):
     if length < 8:

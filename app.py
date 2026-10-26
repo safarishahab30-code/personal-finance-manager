@@ -5,10 +5,10 @@ import io
 import csv
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-import database as db
+from data import database as db
 
 
 # مسیر واقعی دیتابیس
@@ -158,6 +158,25 @@ def logout():
     session.clear()
     flash('با موفقیت از حساب خارج شدید.', 'info')
     return redirect(url_for('login'))
+import jdatetime
+
+
+# تعریف فیلتر جلالی
+@app.template_filter('jalali')
+def jalali_filter(date_value):
+  if not date_value:
+    return ''
+  # اگر تاریخ به صورت استرینگ یا شیء datetime باشد، تبدیل به جلالی می‌کنیم
+  # فرض بر این است که تاریخ میلادی به دست می‌آید:
+  try:
+    if isinstance(date_value, str):
+      # بسته به فرمت ذخیره در دیتابیس (مثلا YYYY-MM-DD)
+      dt = jdatetime.datetime.strptime(date_value[:10], '%Y-%m-%d')
+    else:
+      dt = jdatetime.datetime.fromgregorian(datetime=date_value)
+    return dt.strftime('%Y/%m/%d')
+  except Exception:
+    return date_value
 
 
 # ---------------------------------------------------------------
@@ -641,5 +660,7 @@ def change_password():
 
 
 if __name__ == "__main__":
-    db.init_db()
+    db_instance = db.Database()
+    db_instance.init_db()
+    init_db()
     app.run(debug=True)
