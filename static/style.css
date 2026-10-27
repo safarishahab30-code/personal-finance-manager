@@ -317,84 +317,82 @@ body.dashboard-body {
   flex-wrap: wrap;
   align-items: center;
   background: rgba(255, 255, 255, 0.03);
-  padding: 14px;
+  padding: 16px;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
 }
 
-.filter-input-wrapper {
-  flex: 2;
-  min-width: 200px;
-}
-
+.filter-input-wrapper,
 .filter-select-wrapper {
   flex: 1;
-  min-width: 140px;
-}
-
-.filter-input-wrapper input,
-.filter-select-wrapper select {
-  width: 100%;
-  height: 42px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
-  font-size: 13px;
-  outline: none;
-  transition: 0.2s;
-}
-
-.filter-select-wrapper select option {
-  background: #181522;
-  color: white;
-}
-
-.filter-input-wrapper input:focus,
-.filter-select-wrapper select:focus {
-  border-color: var(--purple);
+  min-width: 200px;
 }
 
 .filter-buttons {
   display: flex;
   gap: 8px;
 }
+        <div class="filter-container">
+            <form method="GET" action="{{ url_for('dashboard') }}" class="filter-form">
+                <div class="filter-row">
+                    <div class="filter-field search-field">
+                        <input type="text" name="search" placeholder="🔍 جستجو در عنوان، توضیحات یا دسته..." value="{{ search_query or '' }}">
+                    </div>
+                    <div class="filter-field">
+                        <select name="type">
+                            <option value="">همه انواع تراکنش</option>
+                            <option value="income" {% if selected_type == 'income' %}selected{% endif %}>درآمد</option>
+                            <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn-filter-apply">اعمال فیلترها</button>
+                    <a href="{{ url_for('dashboard') }}" class="btn-filter-clear">پاک کردن</a>
+                </div>
+            </form>
+        </div>
+        <form method="GET" action="{{ url_for('dashboard') }}" class="custom-form filter-form">
+            <div class="input-group">
+                <label>جستجو</label>
+                <input type="text" name="search" placeholder="جستجو در عنوان، توضیحات..." value="{{ search_query or '' }}">
+            </div>
+            <div class="input-group">
+                <label>نوع تراکنش</label>
+                <select name="type">
+                    <option value="">همه انواع تراکنش</option>
+                    <option value="income" {% if selected_type == 'income' %}selected{% endif %}>درآمد</option>
+                    <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
+                </select>
+            </div>
+            <div class="filter-buttons-group">
+                <button type="submit" class="btn-submit">اعمال فیلتر</button>
+                <a href="{{ url_for('dashboard') }}" class="btn-reset">پاک کردن</a>
+            </div>
+        </form>
 
-.btn-filter {
-  height: 42px;
-  padding: 0 18px;
-  border: none;
+.btn-reset {
+  height: 44px;
+  padding: 0 20px;
   border-radius: 10px;
-  background: var(--purple);
-  color: white;
+  font-size: 14px;
   font-weight: 600;
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: 0.2s;
+  text-decoration: none;
 }
 
-.btn-filter:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+.btn-filter {
+  background: var(--purple);
+  color: white;
+  border: none;
 }
 
 .btn-reset {
-  height: 42px;
-  padding: 0 16px;
-  display: inline-flex;
-  align-items: center;
-  border-radius: 10px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--muted);
-  text-decoration: none;
-  font-size: 13px;
-  transition: 0.2s;
-}
-
-.btn-reset:hover {
-  color: white;
-  background: rgba(255, 255, 255, 0.14);
 }
 
 /* بودجه‌بندی */
@@ -555,30 +553,42 @@ tbody tr:hover {
 }
 
 .actions-cell {
-  white-space: nowrap;
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 7px;
+  width: 34px;
+  height: 34px;
   border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
   text-decoration: none;
-  transition: 0.2s;
+  transition: all 0.2s ease;
 }
 
 .edit-btn {
-  background: rgba(245, 158, 11, 0.13);
   color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.edit-btn:hover {
+  background: rgba(245, 158, 11, 0.25);
+  transform: translateY(-1px);
 }
 
 .delete-btn {
-  background: rgba(239, 68, 68, 0.12);
   color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  transform: translateY(-1px);
 }
 
 .icon-btn:hover {
@@ -683,5 +693,150 @@ tbody tr:hover {
     border-radius: 10px;
     text-decoration: none;
     font-size: 0.9rem;
+}
+
+/* اصلاح نهایی یکدست‌سازی فیلتر، جست‌وجو و آیکون‌ها */
+.filter-form input,
+.filter-form select,
+.filter-form .btn-filter,
+.filter-form .btn-reset {
+  height: 42px !important;
+  border-radius: 10px !important;
+  font-family: 'Vazirmatn', Tahoma, Arial, sans-serif !important;
+}
+
+.filter-form input,
+.filter-form select {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  padding: 0 14px !important;
+}
+
+.filter-form input::placeholder {
+  color: var(--muted) !important;
+}
+
+.actions-cell {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.icon-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--border) !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.edit-btn {
+  color: #fbbf24 !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+
+.delete-btn {
+  color: #f87171 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+.filter-form {
+  grid-template-columns: 2fr 1fr auto !important;
+  align-items: flex-end !important;
+}
+
+.filter-buttons-group {
+  display: flex;
+  gap: 8px;
+  height: 46px;
+  align-items: center;
+}
+
+.filter-buttons-group .btn-submit {
+  height: 46px;
+  margin: 0;
+}
+
+.filter-buttons-group .btn-reset {
+  height: 46px;
+  padding: 0 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.filter-buttons-group .btn-reset:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+.custom-form.transaction-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.custom-form .input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-form input,
+.custom-form select,
+.custom-form button,
+.custom-form .btn-reset {
+  height: 46px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: 14px;
+}
+
+.custom-form button.btn-submit,
+.custom-form .btn-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  font-weight: bold;
+}
+.custom-form.filter-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.custom-form.filter-form .input-group:last-child {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.custom-form.filter-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.custom-form.filter-form .input-group:last-child {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
 }
 

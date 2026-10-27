@@ -35,18 +35,17 @@
             </div>
         {% endif %}
     {% endwith %}
-
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="alert-container">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
-
+    <script>
+        setTimeout(function() {
+          let alerts = document.querySelectorAll('.alert, .flash-message');
+          alerts.forEach(function(alert) {
+            alert.style.transition = 'opacity 0.5s ease';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+          });
+        }, 5000);
+      </script>
+      
     <!-- Summary Cards -->
     <section class="summary-grid">
         <div class="summary-card glass-card income-card">
@@ -93,6 +92,7 @@
             <div class="chart-box">
                 <canvas id="expenseChart"></canvas>
                 <div id="noChartData" class="empty-state" style="display: none;">
+               
                     هنوز هزینه‌ای برای نمایش در نمودار ثبت نشده است.
                 </div>
             </div>
@@ -204,7 +204,7 @@
     </section>
 
     <!-- Transactions Table & Filters -->
-    <section class="glass-card section-card">
+    <section class="glass-card section-card" id="transactions-section">
         <div class="section-heading transactions-heading">
             <div>
                 <span class="section-label">گزارش مالی</span>
@@ -213,26 +213,24 @@
             <span class="transaction-count">{{ transactions|length }} تراکنش ثبت شده</span>
         </div>
 
-        <div class="filter-container">
-            <form action="{{ url_for('dashboard') }}" method="GET" class="modern-filter-form">
-                <div class="filter-row">
-                    <div class="filter-field search-field">
-                        <input type="text" name="search" placeholder="🔍 جستجو در عنوان، توضیحات یا دسته..." value="{{ search_query or '' }}">
-                    </div>
-                    <div class="filter-field">
-                        <select name="type">
-                            <option value="">همه انواع تراکنش</option>
-                            <option value="income" {% if selected_type == 'income' %}selected{% endif %}>درآمد</option>
-                            <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="filter-actions">
-                    <button type="submit" class="btn-filter-apply">اعمال فیلترها</button>
-                    <a href="{{ url_for('dashboard') }}" class="btn-filter-clear">پاک کردن</a>
-                </div>
-            </form>
-        </div>
+        <form method="GET" action="{{ url_for('dashboard') }}" class="custom-form transaction-form filter-form">
+            <div class="input-group">
+                <label>جستجو در تراکنش‌ها</label>
+                <input type="text" name="search" placeholder="🔍 جستجو در عنوان، توضیحات..." value="{{ search_query or '' }}">
+            </div>
+            <div class="input-group">
+                <label>نوع تراکنش</label>
+                <select name="type">
+                    <option value="">همه انواع تراکنش</option>
+                    <option value="income" {% if selected_type == 'income' %}selected{% endif %}>درآمد</option>
+                    <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
+                </select>
+            </div>
+            <div class="input-group" style="display: flex; gap: 8px; align-items: flex-end;">
+                <button type="submit" class="btn-submit" style="flex: 1; margin: 0;">اعمال فیلتر</button>
+                <a href="{{ url_for('dashboard') }}" class="btn-reset" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; height: 46px; border-radius: 12px; background: rgba(255,255,255,0.08); color: var(--muted); text-decoration: none; font-size: 14px; font-weight: bold;">پاک کردن</a>
+            </div>
+        </form>
 
         <div class="table-wrapper">
             <table class="modern-table">
@@ -262,7 +260,8 @@
                         </td>
                         <td class="actions-cell">
                             <a href="{{ url_for('edit_transaction', txn_id=t['id']) }}" class="icon-btn edit-btn" title="ویرایش">✏️</a>
-                            <a href="{{ url_for('delete_transaction', transaction_id=t['id']) }}" class="icon-btn delete-btn" title="حذف" onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟')">🗑️</a>
+                            <a href="{{ url_for('delete_transaction', txn_id=t['id']) }}" class="icon-btn delete-btn" title="حذف" onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟')">🗑️</a>
+
                         </td>
                     </tr>
                     {% else %}
@@ -312,3 +311,14 @@
 </script>
 </body>
 </html>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('search') || urlParams.has('type')) {
+            const tableSection = document.getElementById('transactions-section');
+            if (tableSection) {
+                tableSection.scrollIntoView({ behavior: 'instant' });
+            }
+        }
+    });
+</script>
