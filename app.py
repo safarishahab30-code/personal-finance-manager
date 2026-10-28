@@ -181,7 +181,8 @@ def jalali_filter(date_value):
 
 # ---------------------------------------------------------------
 #  داشبورد
-# ---------------------------------------------------------------
+from datetime import datetime, date, timedelta
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -191,12 +192,26 @@ def dashboard():
     user_id = session['user_id']
     current_month = datetime.now().strftime('%Y-%m')
 
+    # ۱. دریافت ورودی‌های فیلتر و جستجو
     search_query = request.args.get('search', '').strip()
     t_type_filter = request.args.get('type', '').strip()
     category_filter = request.args.get('category', '').strip()
+    quick_range = request.args.get('quick_range', '').strip()
+    start_date = request.args.get('start_date', '').strip()
+    end_date = request.args.get('end_date', '').strip()
+
+    # ۲. محاسبه تاریخ مبدا برای فیلترهای زمانی سریع
+    today = date.today()
+    if quick_range == 'week':
+        start_date = (today - timedelta(days=7)).isoformat()
+    elif quick_range == 'month':
+        start_date = (today - timedelta(days=30)).isoformat()
+    elif quick_range == '3months':
+        start_date = (today - timedelta(days=90)).isoformat()
 
     conn = get_db_connection()
     try:
+        # دریافت تمامی تراکنش‌ها برای آمارهای کلی و نمودارها
         all_txns = conn.execute(
             'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, id DESC',
             (user_id,)
@@ -208,7 +223,7 @@ def dashboard():
 
         categories = sorted(set(t['category'] for t in all_txns if t['category']))
 
-        # ساخت پرس‌وجوی فیلترشده
+        # ۳. ساخت پرس‌وجوی پویا برای تراکنش‌های فیلترشده
         query = 'SELECT * FROM transactions WHERE user_id = ?'
         params = [user_id]
 
@@ -221,6 +236,12 @@ def dashboard():
         if category_filter:
             query += ' AND category = ?'
             params.append(category_filter)
+        if start_date:
+            query += ' AND date >= ?'
+            params.append(start_date)
+        if end_date:
+            query += ' AND date <= ?'
+            params.append(end_date)
 
         query += ' ORDER BY date DESC, id DESC'
         transactions = conn.execute(query, params).fetchall()
@@ -259,6 +280,48 @@ def dashboard():
                 'percentage': round(percentage, 1)
             })
 
+        # استخراج دسته‌بندی‌های قبلی ثبت‌شده توسط کاربر
+        user_expense_cats = [
+            r[0]
+            for r in conn.execute(
+                "SELECT DISTINCT category FROM transactions WHERE user_id = ? AND type = 'expense'",
+                (user_id,),
+            ).fetchall()
+            if r[0]
+        ]
+        user_income_cats = [
+            r[0]
+            for r in conn.execute(
+                "SELECT DISTINCT category FROM transactions WHERE user_id = ? AND type = 'income'",
+                (user_id,),
+            ).fetchall()
+            if r[0]
+        ]
+
+        # ادغام با دسته‌بندی‌های پیش‌فرض بدون تکرار
+        default_expenses = [
+            'خوراکی و سوپرمارکت',
+            'اجاره و قبوض',
+            'حمل و نقل',
+            'پوشاک',
+            'تفریح و سرگرمی',
+            'درمان و سلامت',
+        ]
+        default_incomes = [
+            'حقوق',
+            'پاداش',
+            'فروش کتاب',
+            'سرمایه‌گذاری',
+            'یارانه',
+        ]
+
+        expense_categories = list(
+            dict.fromkeys(default_expenses + user_expense_cats)
+        )
+        income_categories = list(
+            dict.fromkeys(default_incomes + user_income_cats)
+        )
+
         return render_template(
             'dashboard.html',
             username=session.get('username'),
@@ -268,13 +331,19 @@ def dashboard():
             total_expense=total_expense,
             balance=balance,
             categories=categories,
+            expense_categories=expense_categories,
+            income_categories=income_categories,
             chart_labels=chart_labels,
             chart_data=chart_data,
             budgets=budgets,
             budgets_status=budgets_status,
             search_query=search_query,
             type_filter=t_type_filter,
-            category_filter=category_filter
+            selected_type=t_type_filter,
+            category_filter=category_filter,
+            quick_range=quick_range,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     except sqlite3.Error as e:
@@ -283,7 +352,6 @@ def dashboard():
         return redirect(url_for('login'))
     finally:
         conn.close()
-
 
 # ---------------------------------------------------------------
 #  مدیریت تراکنش‌ها
@@ -295,7 +363,7 @@ def add_transaction():
         return redirect(url_for('login'))
 
     title = request.form.get('title', '').strip()
-    amount = request.form.get('amount', '').strip()
+    amount = request.form.get('amount', '').replace(',', '').strip()
     t_type = request.form.get('type', '').strip()
     category = request.form.get('category', '').strip()
     date = request.form.get('date', '').strip() or datetime.now().strftime('%Y-%m-%d')
@@ -331,7 +399,6 @@ def add_transaction():
         conn.close()
 
     return redirect(url_for('dashboard'))
-
 
 @app.route('/edit_transaction/<int:txn_id>', methods=['GET', 'POST'])
 def edit_transaction(txn_id):
@@ -427,7 +494,7 @@ def set_budget():
         return redirect(url_for('login'))
 
     category = request.form.get('category', '').strip() or 'سایر'
-    limit_amount = request.form.get('limit_amount', '').strip()
+    limit_amount = request.form.get('limit_amount', '').replace(',', '').strip()
     month = request.form.get('month', '').strip() or datetime.now().strftime('%Y-%m')
 
     try:
@@ -458,7 +525,39 @@ def set_budget():
         conn.close()
 
     return redirect(url_for('dashboard'))
+@app.route('/edit_budget/<int:budget_id>', methods=['POST'])
+def edit_budget(budget_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    new_limit = request.form.get('limit_amount')
+    if new_limit:
+        conn = get_db_connection()
+        conn.execute('UPDATE budgets SET limit_amount = ? WHERE id = ? AND user_id = ?', 
+                     (float(new_limit), budget_id, session['user_id']))
+        conn.commit()
+        conn.close()
+    return redirect(url_for('dashboard'))
 
+    conn = get_db_connection()
+    try:
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conn.execute(
+            '''UPDATE budgets 
+               SET limit_amount = ?, updated_at = ? 
+               WHERE id = ? AND user_id = ?''',
+            (limit_amount, now, budget_id, session['user_id'])
+        )
+        conn.commit()
+        flash('بودجه با موفقیت ویرایش شد.', 'success')
+    except sqlite3.Error as e:
+        print(f"Edit budget DB error: {e}")
+        flash('خطایی در ویرایش بودجه رخ داد.', 'danger')
+        conn.rollback()
+    finally:
+        conn.close()
+
+    return redirect(url_for('dashboard'))
 
 @app.route('/delete_budget/<int:budget_id>', methods=['POST'])
 def delete_budget(budget_id):

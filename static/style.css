@@ -840,3 +840,57 @@ tbody tr:hover {
   align-items: flex-end;
 }
 
+/* چیدمان صحیح بخش مدیریت بودجه */
+.budget-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: end;
+}
+
+/* هر فیلد، شامل label و input و دکمه‌های خودش */
+.budget-form .input-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* دکمه‌ها فقط زیر فیلد سقف بودجه */
+.budget-form .quick-amounts {
+  display: flex !important;
+  justify-content: flex-start;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+/* جلوگیری از کشیده‌شدن اشتباه دکمه‌ها */
+.budget-form .quick-amounts button {
+  width: auto !important;
+  flex: 0 0 auto;
+}
+
+/* دکمه ثبت در ردیف جداگانه */
+.budget-form > button[type="submit"] {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 4px;
+}
+/* یکسان‌سازی ارتفاع و استایل فیلدهای فرم بودجه */
+.budget-form input[type="text"],
+.budget-form select {
+    height: 48px;
+    box-sizing: border-box;
+}
+
+.budget-inputs-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+@media (max-width: 768px) {
+    .budget-inputs-row {
+        flex-direction: column;
+    }
+}

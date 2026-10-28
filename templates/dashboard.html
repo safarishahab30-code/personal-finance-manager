@@ -35,17 +35,18 @@
             </div>
         {% endif %}
     {% endwith %}
+
     <script>
         setTimeout(function() {
-          let alerts = document.querySelectorAll('.alert, .flash-message');
-          alerts.forEach(function(alert) {
-            alert.style.transition = 'opacity 0.5s ease';
-            alert.style.opacity = '0';
-            setTimeout(() => alert.remove(), 500);
-          });
+            let alerts = document.querySelectorAll('.alert, .flash-message');
+            alerts.forEach(function(alert) {
+                alert.style.transition = 'opacity 0.5s ease';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 500);
+            });
         }, 5000);
-      </script>
-      
+    </script>
+
     <!-- Summary Cards -->
     <section class="summary-grid">
         <div class="summary-card glass-card income-card">
@@ -92,7 +93,6 @@
             <div class="chart-box">
                 <canvas id="expenseChart"></canvas>
                 <div id="noChartData" class="empty-state" style="display: none;">
-               
                     هنوز هزینه‌ای برای نمایش در نمودار ثبت نشده است.
                 </div>
             </div>
@@ -106,29 +106,62 @@
             <h2>مدیریت بودجه ماه جاری</h2>
         </div>
 
-        <form action="{{ url_for('set_budget') }}" method="POST" class="custom-form budget-form">
-            <div class="input-group">
-                <label>دسته‌بندی</label>
-                <input type="text" name="category" list="budget-categories" placeholder="انتخاب یا نوشتن دسته‌بندی" required>
-                <datalist id="budget-categories">
-                    {% if categories %}
-                        {% for cat in categories %}
-                            <option value="{{ cat }}">
+        <form action="{{ url_for('set_budget') }}" method="POST" class="budget-form">
+            <div class="budget-inputs-row" style="display: flex; gap: 20px; align-items: flex-start; width: 100%; flex-wrap: wrap;">
+                <div class="input-group budget-limit-group" style="flex: 1; min-width: 240px; margin: 0;">
+                    <label for="budget-limit-input">سقف بودجه ماهانه (تومان)</label>
+            
+                    <input
+                        id="budget-limit-input"
+                        name="limit_amount"
+                        type="text"
+                        placeholder="مثلاً 3,000,000"
+                        autocomplete="off"
+                        required
+                        oninput="formatBudgetInput(this)"
+                    >
+                    <small
+                        id="budget-live-preview"
+                        style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;"
+                    ></small>
+
+                    <div class="quick-amounts" style="margin-top: 8px;">
+                        <button type="button" onclick="setQuickBudget(1000000)">۱ میلیون</button>
+                        <button type="button" onclick="setQuickBudget(3000000)">۳ میلیون</button>
+                        <button type="button" onclick="setQuickBudget(5000000)">۵ میلیون</button>
+                        <button type="button" onclick="setQuickBudget(10000000)">۱۰ میلیون</button>
+                    </div>
+                </div>
+            
+                <div class="input-group category-group" style="flex: 1; min-width: 200px; margin: 0;">
+                    <label for="budget-category">دسته‌بندی</label>
+                    <select id="budget-category" name="category_id" required style="width: 100%;">
+                        <option value="">انتخاب دسته‌بندی</option>
+                        {% for cat in expense_categories %}
+                            <option value="{{ cat.id or cat }}">{{ cat.name or cat }}</option>
                         {% endfor %}
-                    {% else %}
-                        <option value="خوراک"> <option value="اجاره"> <option value="تفریح">
-                        <option value="حمل و نقل"> <option value="خرید"> <option value="قبوض"> <option value="سایر">
-                    {% endif %}
-                </datalist>
-            </div>
+                    </select>
+                </div>
 
-            <div class="input-group">
-                <label>سقف بودجه ماهانه (تومان)</label>
-                <input type="number" name="limit_amount" placeholder="مثلاً 3000000" min="1" step="any" required>
+                <div class="input-group alert-threshold-group" style="flex: 1; min-width: 180px; margin: 0;">
+                    <label for="alert-threshold-input">آستانه هشدار (%)</label>
+                    <input
+                        id="alert-threshold-input"
+                        name="alert_threshold"
+                        type="number"
+                        min="10"
+                        max="100"
+                        value="80"
+                        required
+                        style="width: 100%;"
+                    >
+                    <small style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;">پیش‌فرض: ۸۰٪</small>
+                </div>
             </div>
-
-            <button type="submit" class="btn-submit">ثبت / بروزرسانی بودجه</button>
+        
+            <button type="submit" class="btn-submit" style="margin-top: 20px;">ثبت / بروزرسانی بودجه</button>
         </form>
+
 
         {% if budgets_status %}
             <div class="budgets-grid">
@@ -136,23 +169,52 @@
                     <div class="budget-item">
                         <div class="budget-header">
                             <strong>{{ b.category }}</strong>
-                            <a href="{{ url_for('delete_budget', budget_id=b.id) }}" class="budget-delete" onclick="return confirm('آیا از حذف این بودجه مطمئن هستید؟')">حذف</a>
-                        </div>
-                        <div class="budget-amounts">
-                            <span>مصرف: {{ "{:,.0f}".format(b.spent_amount) }}</span>
-                            <span>سقف: {{ "{:,.0f}".format(b.limit_amount) }}</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill {% if b.percentage >= 100 %}progress-danger{% elif b.percentage >= 80 %}progress-warning{% else %}progress-safe{% endif %}"
-                                 style="width: {{ [b.percentage, 100]|min }}%;">
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button
+                                    type="button"
+                                    class="icon-btn edit-btn"
+                                    title="ویرایش سقف بودجه و آستانه"
+                                    onclick="editBudgetPrompt('{{ b.id }}', '{{ b.category }}', '{{ b.limit_amount }}', '{{ b.alert_threshold | default(80) }}')"
+                                >✏️</button>
+
+                                <form
+                                    action="{{ url_for('delete_budget', budget_id=b.id) }}"
+                                    method="POST"
+                                    style="margin: 0; display: inline;"
+                                    onsubmit="return confirm('آیا از حذف این بودجه مطمئن هستید؟')"
+                                >
+                                    <button
+                                        type="submit"
+                                        class="icon-btn delete-btn"
+                                        title="حذف"
+                                        style="background: none; border: none; cursor: pointer; padding: 0;"
+                                    >🗑️</button>
+                                </form>
                             </div>
                         </div>
+
+                        <div class="budget-amounts">
+                            <span>مصرف: {{ "{:,.0f}".format(b.spent_amount) }}</span>
+                            <span>سقف: {{ "{:,.0f}".format(b.limit_amount) }} (هشدار: {{ b.alert_threshold | default(80) }}٪)</span>
+                        </div>
+
+                        <div class="progress-bar-bg">
+                            <div
+                                class="progress-bar-fill {% if b.percentage >= 100 %}progress-danger{% elif b.percentage >= (b.alert_threshold | default(80)) %}progress-warning{% else %}progress-safe{% endif %}"
+                                style="width: {{ [b.percentage, 100]|min }}%;"
+                            ></div>
+                        </div>
+
                         <div class="budget-footer">
                             <span>{{ b.percentage }}% مصرف شده</span>
                             {% if b.spent_amount > b.limit_amount %}
-                                <span style="color: #f87171;">مازاد: {{ "{:,.0f}".format(b.spent_amount - b.limit_amount) }}</span>
+                                <span style="color: #f87171;">
+                                    مازاد: {{ "{:,.0f}".format(b.spent_amount - b.limit_amount) }}
+                                </span>
                             {% else %}
-                                <span>باقی‌مانده: {{ "{:,.0f}".format(b.limit_amount - b.spent_amount) }}</span>
+                                <span>
+                                    باقی‌مانده: {{ "{:,.0f}".format(b.limit_amount - b.spent_amount) }}
+                                </span>
                             {% endif %}
                         </div>
                     </div>
@@ -172,36 +234,70 @@
 
         <form action="{{ url_for('add_transaction') }}" method="POST" class="custom-form transaction-form">
             <div class="input-group">
-                <label>مبلغ (تومان)</label>
-                <input type="number" name="amount" placeholder="مثلاً 500000" min="1" step="any" required>
+                <label for="add-txn-amount">مبلغ (تومان)</label>
+                <input
+                    type="text"
+                    id="add-txn-amount"
+                    name="amount"
+                    placeholder="مثلاً 500,000"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    required
+                    oninput="formatAmountInput(this)"
+                >
+                <small
+                    id="amount-live-preview"
+                    style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;"
+                ></small>
             </div>
+
+            <div class="input-group">
+                <label for="add-txn-date">تاریخ تراکنش</label>
+                <input
+                    type="text"
+                    id="add-txn-date"
+                    class="p-datepicker"
+                    placeholder="انتخاب تاریخ؛ خالی بماند یعنی امروز"
+                    autocomplete="off"
+                >
+                <input type="hidden" name="date" id="add_txn_date_hidden">
+            </div>
+
             <div class="input-group">
                 <label>عنوان / توضیحات</label>
                 <input type="text" name="title" placeholder="مثلاً خرید کتاب" required>
             </div>
-            <div class="input-group">
-                <label>دسته‌بندی</label>
-                <input type="text" name="category" list="transaction-categories" placeholder="انتخاب دسته‌بندی" required>
-                <datalist id="transaction-categories">
-                    {% if categories %}
-                        {% for cat in categories %}
-                            <option value="{{ cat }}">
-                        {% endfor %}
-                    {% else %}
-                        <option value="خوراک"><option value="اجاره"><option value="حقوق"><option value="دستمزد"><option value="تفریح"><option value="حمل و نقل"><option value="خرید"><option value="قبوض"><option value="سایر">
-                    {% endif %}
-                </datalist>
-            </div>
+
             <div class="input-group">
                 <label>نوع تراکنش</label>
-                <select name="type" required>
-                    <option value="expense">هزینه</option>
+                <select id="txn-type" name="type" required onchange="updateCategoryList()">
+                    <option value="expense" selected>هزینه</option>
                     <option value="income">درآمد</option>
                 </select>
             </div>
+
+            <div class="input-group">
+                <label>دسته‌بندی</label>
+                <input
+                    type="text"
+                    id="category-input"
+                    name="category"
+                    list="expense-categories"
+                    placeholder="انتخاب یا نوشتن دسته‌بندی"
+                    autocomplete="off"
+                    required
+                >
+            </div>
+
             <button type="submit" class="btn-submit">+ ثبت تراکنش</button>
         </form>
     </section>
+
+    <!-- Persian Datepicker Assets -->
+    <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css"/>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
+    <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 
     <!-- Transactions Table & Filters -->
     <section class="glass-card section-card" id="transactions-section">
@@ -213,22 +309,79 @@
             <span class="transaction-count">{{ transactions|length }} تراکنش ثبت شده</span>
         </div>
 
-        <form method="GET" action="{{ url_for('dashboard') }}" class="custom-form transaction-form filter-form">
-            <div class="input-group">
+        <form
+            method="GET"
+            action="{{ url_for('dashboard') }}"
+            class="custom-form transaction-form filter-form"
+            style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;"
+        >
+            <div class="input-group" style="flex: 1 1 200px; min-width: 180px; margin: 0;">
                 <label>جستجو در تراکنش‌ها</label>
-                <input type="text" name="search" placeholder="🔍 جستجو در عنوان، توضیحات..." value="{{ search_query or '' }}">
+                <input
+                    type="text"
+                    name="search"
+                    placeholder="🔍 جستجو در عنوان، توضیحات..."
+                    value="{{ search_query or '' }}"
+                >
             </div>
-            <div class="input-group">
+
+            <div class="input-group" style="flex: 1 1 140px; min-width: 130px; margin: 0;">
+                <label>از تاریخ</label>
+                <input type="text" class="p-datepicker" placeholder="۱۴۰۳/۰۱/۰۱" autocomplete="off">
+                <input type="hidden" name="start_date" id="start_date_hidden" value="{{ start_date or '' }}">
+            </div>
+
+            <div class="input-group" style="flex: 1 1 140px; min-width: 130px; margin: 0;">
+                <label>تا تاریخ</label>
+                <input type="text" class="p-datepicker" placeholder="۱۴۰۳/۱۲/۲۹" autocomplete="off">
+                <input type="hidden" name="end_date" id="end_date_hidden" value="{{ end_date or '' }}">
+            </div>
+
+            <div class="input-group" style="flex: 1 1 140px; min-width: 130px; margin: 0;">
                 <label>نوع تراکنش</label>
                 <select name="type">
-                    <option value="">همه انواع تراکنش</option>
+                    <option value="">همه انواع</option>
                     <option value="income" {% if selected_type == 'income' %}selected{% endif %}>درآمد</option>
                     <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
                 </select>
             </div>
-            <div class="input-group" style="display: flex; gap: 8px; align-items: flex-end;">
-                <button type="submit" class="btn-submit" style="flex: 1; margin: 0;">اعمال فیلتر</button>
-                <a href="{{ url_for('dashboard') }}" class="btn-reset" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; height: 46px; border-radius: 12px; background: rgba(255,255,255,0.08); color: var(--muted); text-decoration: none; font-size: 14px; font-weight: bold;">پاک کردن</a>
+
+            <!-- فیلتر دسته‌بندی -->
+            <div class="input-group" style="flex: 1 1 150px; min-width: 130px; margin: 0;">
+                <label>دسته‌بندی</label>
+                <select name="category">
+                    <option value="">همه دسته‌ها</option>
+                    {% for cat in all_categories or (expense_categories + income_categories) %}
+                        <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>
+                            {{ cat }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- فیلتر مرتب‌سازی -->
+            <div class="input-group" style="flex: 1 1 150px; min-width: 130px; margin: 0;">
+                <label>مرتب‌سازی</label>
+                <select name="sort">
+                    <option value="date_desc" {% if selected_sort == 'date_desc' %}selected{% endif %}>جدیدترین</option>
+                    <option value="date_asc" {% if selected_sort == 'date_asc' %}selected{% endif %}>قدیمی‌ترین</option>
+                    <option value="amount_desc" {% if selected_sort == 'amount_desc' %}selected{% endif %}>بیشترین مبلغ</option>
+                    <option value="amount_asc" {% if selected_sort == 'amount_asc' %}selected{% endif %}>کمترین مبلغ</option>
+                </select>
+            </div>
+
+            <div class="input-group" style="display: flex; gap: 8px; flex: 1 1 180px; min-width: 160px; margin: 0;">
+                <button
+                    type="submit"
+                    class="btn-submit"
+                    style="flex: 1; height: 46px; margin: 0; border-radius: 12px; font-weight: bold; cursor: pointer;"
+                >اعمال فیلتر</button>
+
+                <a
+                    href="{{ url_for('dashboard') }}"
+                    class="btn-reset"
+                    style="flex: 1; height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(255,255,255,0.08); color: var(--muted); text-decoration: none; font-size: 14px; font-weight: bold; box-sizing: border-box;"
+                >پاک کردن</a>
             </div>
         </form>
 
@@ -260,8 +413,15 @@
                         </td>
                         <td class="actions-cell">
                             <a href="{{ url_for('edit_transaction', txn_id=t['id']) }}" class="icon-btn edit-btn" title="ویرایش">✏️</a>
-                            <a href="{{ url_for('delete_transaction', txn_id=t['id']) }}" class="icon-btn delete-btn" title="حذف" onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟')">🗑️</a>
-
+                            <form action="{{ url_for('delete_transaction', txn_id=t['id']) }}" method="POST" style="display:inline;">
+                                <button
+                                    type="submit"
+                                    class="icon-btn delete-btn"
+                                    title="حذف"
+                                    onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟');"
+                                    style="background:none; border:none; cursor:pointer;"
+                                >🗑️</button>
+                            </form>
                         </td>
                     </tr>
                     {% else %}
@@ -273,14 +433,34 @@
             </table>
         </div>
     </section>
+
 </div>
 
 <script>
+    // تنظیمات تقویم فارسی
+    $(document).ready(function() {
+        $('.p-datepicker').each(function() {
+            const hiddenInput = $(this).next('input[type="hidden"]');
+
+            $(this).persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                altField: hiddenInput,
+                altFormat: 'YYYY-MM-DD'
+            });
+        });
+    });
+
+    // تنظیمات نمودار دایره‌ای هزینه‌ها
     const chartLabels = {{ (chart_labels or []) | tojson }};
     const chartData = {{ (chart_data or []) | tojson }};
 
-    if (chartLabels.length > 0 && chartData.length > 0) {
-        const ctx = document.getElementById('expenseChart').getContext('2d');
+    const chartElement = document.getElementById('expenseChart');
+    const noDataElement = document.getElementById('noChartData');
+
+    if (chartLabels.length > 0 && chartData.length > 0 && chartElement) {
+        const ctx = chartElement.getContext('2d');
+
         new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -297,28 +477,140 @@
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { color: '#f8f7ff', font: { family: 'Vazirmatn', size: 12 }, padding: 14 }
+                        labels: {
+                            color: '#f8f7ff',
+                            font: { family: 'Vazirmatn', size: 12 },
+                            padding: 14
+                        }
                     }
                 }
             }
         });
     } else {
-        const chartElement = document.getElementById('expenseChart');
-        const noDataElement = document.getElementById('noChartData');
         if (chartElement) chartElement.style.display = 'none';
         if (noDataElement) noDataElement.style.display = 'block';
     }
-</script>
-</body>
-</html>
-<script>
+
+    // فرمت زنده مبلغ تراکنش با جداکننده هزارگان
+    function formatAmountInput(input) {
+        const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+        const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+
+        const normalizedValue = input.value
+            .replace(/[۰-۹]/g, digit => String(persianDigits.indexOf(digit)))
+            .replace(/[٠-٩]/g, digit => String(arabicDigits.indexOf(digit)));
+
+        const rawValue = normalizedValue.replace(/\D/g, '');
+        const preview = document.getElementById('amount-live-preview');
+
+        if (!rawValue) {
+            input.value = '';
+            if (preview) preview.textContent = '';
+            return;
+        }
+
+        input.value = Number(rawValue).toLocaleString('en-US');
+
+        if (preview) {
+            preview.textContent = Number(rawValue).toLocaleString('fa-IR') + ' تومان';
+        }
+    }
+
+    // فرمت زنده سقف بودجه با جداکننده هزارگان
+    function formatBudgetInput(input) {
+        const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+        const arabicDigits = '٠١٢٣٤٥٦٧٨۹';
+
+        const normalizedValue = input.value
+            .replace(/[۰-۹]/g, digit => String(persianDigits.indexOf(digit)))
+            .replace(/[٠-٩]/g, digit => String(arabicDigits.indexOf(digit)));
+
+        const rawValue = normalizedValue.replace(/\D/g, '');
+        const preview = document.getElementById('budget-live-preview');
+
+        if (!rawValue) {
+            input.value = '';
+            if (preview) preview.textContent = '';
+            return;
+        }
+
+        input.value = Number(rawValue).toLocaleString('en-US');
+
+        if (preview) {
+            preview.textContent = Number(rawValue).toLocaleString('fa-IR') + ' تومان';
+        }
+    }
+
+    // تابع مقداردهی سریع سقف بودجه از طریق دکمه‌های میانبر
+    function setQuickBudget(amount) {
+        const input = document.getElementById('budget-limit-input');
+        input.value = amount.toLocaleString('en-US');
+        formatBudgetInput(input);
+    }
+
+    // تابع ویرایش سقف بودجه و آستانه هشدار
+    function editBudgetPrompt(budgetId, category, currentLimit, currentThreshold) {
+        const newLimit = prompt(`سقف بودجه جدید برای «${category}» را وارد کنید:`, currentLimit);
+
+        if (newLimit !== null && newLimit.trim() !== "" && !isNaN(newLimit) && Number(newLimit) > 0) {
+            const newThreshold = prompt(`آستانه هشدار جدید (درصد بین 10 تا 100) را وارد کنید:`, currentThreshold || 80);
+            
+            if (newThreshold !== null && !isNaN(newThreshold) && Number(newThreshold) >= 10 && Number(newThreshold) <= 100) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/edit_budget/${budgetId}`;
+
+                const inputLimit = document.createElement('input');
+                inputLimit.type = 'hidden';
+                inputLimit.name = 'limit_amount';
+                inputLimit.value = newLimit.trim();
+                form.appendChild(inputLimit);
+
+                const inputThreshold = document.createElement('input');
+                inputThreshold.type = 'hidden';
+                inputThreshold.name = 'alert_threshold';
+                inputThreshold.value = newThreshold.trim();
+                form.appendChild(inputThreshold);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    }
+
+    // تغییر پویای لیست دسته‌بندی بر اساس نوع تراکنش
+    function updateCategoryList() {
+        const typeSelect = document.getElementById('txn-type');
+        const categoryInput = document.getElementById('category-input');
+
+        categoryInput.value = '';
+
+        if (typeSelect.value === 'income') {
+            categoryInput.setAttribute('list', 'income-categories');
+        } else {
+            categoryInput.setAttribute('list', 'expense-categories');
+        }
+    }
+
+    // اسکرول خودکار به جدول پس از اعمال فیلترها
     document.addEventListener("DOMContentLoaded", function() {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('search') || urlParams.has('type')) {
+
+        if (
+            urlParams.has('search') ||
+            urlParams.has('type') ||
+            urlParams.has('start_date') ||
+            urlParams.has('end_date') ||
+            urlParams.has('category') ||
+            urlParams.has('sort')
+        ) {
             const tableSection = document.getElementById('transactions-section');
+
             if (tableSection) {
                 tableSection.scrollIntoView({ behavior: 'instant' });
             }
         }
     });
 </script>
+</body>
+</html>
