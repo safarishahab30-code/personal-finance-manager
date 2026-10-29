@@ -127,13 +127,12 @@
                 <a href="{{ url_for('logout') }}" class="btn btn-logout">خروج</a>
             </div>
         </div>
-
         <!-- پیام‌های سیستم -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="alert-container">
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category if category in ['success', 'danger', 'info'] else 'info' }}">
+                        <div class="flash-message alert alert-{{ category if category in ['success', 'danger', 'info'] else 'info' }}">
                             {{ message }}
                         </div>
                     {% endfor %}
@@ -226,7 +225,6 @@
         
 
     </div>
-
     <script>
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
@@ -238,7 +236,7 @@
         }
 
         function generateStrongPassword() {
-            const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*';
+            const chars = 'GAPGPTMASKTOKENf5a6wwy6veX0X!@#$%^&*';
             let password = '';
             for (let i = 0; i < 12; i++) {
                 password += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -250,6 +248,16 @@
             newPass.type = 'text';
             confPass.type = 'text';
         }
+
+        // محو و حذف خودکار پیام‌های فلش بعد از ۴ ثانیه
+        setTimeout(function() {
+            let flashes = document.querySelectorAll('.flash-message');
+            flashes.forEach(function(flash) {
+                flash.style.transition = 'opacity 0.5s ease';
+                flash.style.opacity = '0';
+                setTimeout(() => flash.remove(), 500);
+            });
+        }, 4000);
     </script>
 </body>
 </html>

@@ -332,27 +332,45 @@ body.dashboard-body {
   display: flex;
   gap: 8px;
 }
-        <div class="filter-container">
-            <form method="GET" action="{{ url_for('dashboard') }}" class="filter-form">
-                <div class="filter-row">
-                    <div class="filter-field search-field">
-                        <input type="text" name="search" placeholder="🔍 جستجو در عنوان، توضیحات یا دسته..." value="{{ search_query or '' }}">
-                    </div>
-                    <div class="filter-field">
-                        <select name="type">
-                            <option value="">همه انواع تراکنش</option>
-                            <option value="income" {% if selected_type == 'income' %}selected{% endif %}>درآمد</option>
-                            <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="filter-actions">
-                    <button type="submit" class="btn-filter-apply">اعمال فیلترها</button>
-                    <a href="{{ url_for('dashboard') }}" class="btn-filter-clear">پاک کردن</a>
-                </div>
-            </form>
+<div class="filter-container">
+<form method="GET" action="{{ url_for('dashboard') }}" class="filter-form">
+    <div class="filter-row">
+        <div class="filter-field search-field">
+            <input type="text" name="search" placeholder="🔍 جستجو در عنوان، توضیحات یا دسته..." value="{{ search_query or '' }}">
         </div>
-        <form method="GET" action="{{ url_for('dashboard') }}" class="custom-form filter-form">
+        <div class="filter-field">
+            <select name="type">
+                <option value="">همه انواع تراکنش</option>
+                <option value="income" {% if selected_type == 'income' %}selected{% endif %}>درآمد</option>
+                <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
+            </select>
+        </div>
+    </div>
+    <div class="filter-actions">
+        <button type="submit" class="btn-filter-apply">اعمال فیلترها</button>
+        <a href="{{ url_for('dashboard') }}" class="btn-filter-clear">پاک کردن</a>
+    </div>
+</form>
+</div>
+<form method="GET" action="{{ url_for('dashboard') }}" class="custom-form filter-form">
+<div class="input-group">
+    <label>جستجو</label>
+    <input type="text" name="search" placeholder="جستجو در عنوان، توضیحات..." value="{{ search_query or '' }}">
+</div>
+<div class="input-group">
+    <label>نوع تراکنش</label>
+    <select name="type">
+        <option value="">همه انواع تراکنش</option>
+        <option value="income" {% if selected_type == 'income' %}selected{% endif %}>درآمد</option>
+        <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>هزینه</option>
+    </select>
+</div>
+<div class="filter-buttons-group">
+    <button type="submit" class="btn-submit">اعمال فیلتر</button>
+    <a href="{{ url_for('dashboard') }}" class="btn-reset">پاک کردن</a>
+</div>
+</form>
+<form method="GET" action="{{ url_for('dashboard') }}" class="custom-form filter-form">
             <div class="input-group">
                 <label>جستجو</label>
                 <input type="text" name="search" placeholder="جستجو در عنوان، توضیحات..." value="{{ search_query or '' }}">
@@ -893,4 +911,18 @@ tbody tr:hover {
     .budget-inputs-row {
         flex-direction: column;
     }
+}
+/* تم روشن - وقتی کلاس light-mode روی body فعال شود */
+body.light-mode {
+  --bg-dark: #f3e8ff;
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --border: rgba(168, 85, 247, 0.2);
+  --text: #181522;
+  --muted: #6b7280;
+}
+
+/* هماهنگ‌سازی گزینه‌های سلکت در تم روشن */
+body.light-mode .input-group select option {
+  background: #f3e8ff;
+  color: #181522;
 }

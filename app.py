@@ -25,35 +25,13 @@ def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
-
-
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
+        # ایجاد ساختار پایه (بدون تکرار جدول budgets)
         cursor.executescript('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                created_at TEXT,
-                updated_at TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS transactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                title TEXT NOT NULL,
-                amount REAL NOT NULL,
-                type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-                category TEXT,
-                date TEXT NOT NULL,
-                created_at TEXT,
-                updated_at TEXT,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
             CREATE TABLE IF NOT EXISTS budgets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -65,7 +43,39 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                 UNIQUE(user_id, category, month)
             );
+
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                title TEXT,
+                amount REAL NOT NULL,
+                type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+                category TEXT,
+                date TEXT NOT NULL,
+                created_at TEXT,
+                updated_at TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
         ''')
+
+        # بررسی و اضافه کردن ستون‌های مفقود در دیتابیس‌های قدیمی
+        cursor.execute("PRAGMA table_info(transactions)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        if 'title' not in columns:
+            cursor.execute("ALTER TABLE transactions ADD COLUMN title TEXT")
+        if 'created_at' not in columns:
+            cursor.execute("ALTER TABLE transactions ADD COLUMN created_at TEXT")
+        if 'updated_at' not in columns:
+            cursor.execute("ALTER TABLE transactions ADD COLUMN updated_at TEXT")
+        # بررسی و اضافه کردن ستون‌های مفقود در جدول budgets
+        cursor.execute("PRAGMA table_info(budgets)")
+        b_columns = [row[1] for row in cursor.fetchall()]
+        if 'created_at' not in b_columns:
+            cursor.execute("ALTER TABLE budgets ADD COLUMN created_at TEXT")
+        if 'updated_at' not in b_columns:
+            cursor.execute("ALTER TABLE budgets ADD COLUMN updated_at TEXT")
+
         conn.commit()
         print("Database initialized.")
     except sqlite3.Error as e:
@@ -73,7 +83,6 @@ def init_db():
         conn.rollback()
     finally:
         conn.close()
-
 
 # ---------------------------------------------------------------
 #  مسیرهای عمومی
@@ -113,9 +122,10 @@ def register():
             flash('ثبت نام با موفقیت انجام شد. لطفاً وارد شوید.', 'success')
             return redirect(url_for('login'))
         except sqlite3.Error as e:
-            print(f"Register DB error: {e}")
-            flash('خطایی در ثبت نام رخ داد.', 'danger')
-            return render_template('register.html')
+            print(f"Set budget DB error: {e}")  # این خط خطا را در ترمینال چاپ می‌کند
+            flash(f'خطا در ذخیره بودجه: {e}', 'danger')
+            conn.rollback()
+
         finally:
             conn.close()
 
@@ -508,12 +518,13 @@ def set_budget():
     conn = get_db_connection()
     try:
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # استفاده از INSERT OR REPLACE برای جایگزینی بودجه در صورت وجود
         conn.execute(
             '''INSERT INTO budgets (user_id, category, limit_amount, month, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?)
-               ON CONFLICT(user_id, category, month)
-               DO UPDATE SET limit_amount = excluded.limit_amount, updated_at = excluded.updated_at''',
-            (session['user_id'], category, limit_amount, month, now, now)
+               ON CONFLICT(user_id, category, month) 
+               DO UPDATE SET limit_amount = excluded.limit_amount, updated_at = ?''',
+            (session['user_id'], category, limit_amount, month, now, now, now)
         )
         conn.commit()
         flash('بودجه با موفقیت ذخیره شد.', 'success')
@@ -525,28 +536,39 @@ def set_budget():
         conn.close()
 
     return redirect(url_for('dashboard'))
+
+
 @app.route('/edit_budget/<int:budget_id>', methods=['POST'])
 def edit_budget(budget_id):
     if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
         return redirect(url_for('login'))
     
-    new_limit = request.form.get('limit_amount')
-    if new_limit:
-        conn = get_db_connection()
-        conn.execute('UPDATE budgets SET limit_amount = ? WHERE id = ? AND user_id = ?', 
-                     (float(new_limit), budget_id, session['user_id']))
-        conn.commit()
-        conn.close()
-    return redirect(url_for('dashboard'))
+    new_limit = request.form.get('limit_amount', '').replace(',', '').strip()
+    new_threshold = request.form.get('alert_threshold', '80').strip()
+
+    if not new_limit:
+        flash('سقف بودجه الزامی است.', 'warning')
+        return redirect(url_for('dashboard'))
+
+    try:
+        limit_val = float(new_limit)
+        threshold_val = int(new_threshold)
+        if limit_val <= 0 or not (10 <= threshold_val <= 100):
+            raise ValueError
+    except ValueError:
+        flash('مقادیر وارد شده برای بودجه یا آستانه هشدار معتبر نیستند.', 'danger')
+        return redirect(url_for('dashboard'))
 
     conn = get_db_connection()
     try:
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # اگر ستون alert_threshold را در جدول داری، آن را هم آپدیت کن (یا اگر نداری فقط limit_amount)
         conn.execute(
             '''UPDATE budgets 
                SET limit_amount = ?, updated_at = ? 
                WHERE id = ? AND user_id = ?''',
-            (limit_amount, now, budget_id, session['user_id'])
+            (limit_val, now, budget_id, session['user_id'])
         )
         conn.commit()
         flash('بودجه با موفقیت ویرایش شد.', 'success')
@@ -673,7 +695,7 @@ def change_username():
         flash('لطفاً وارد شوید.', 'warning')
         return redirect(url_for('login'))
 
-    new_username = request.form.get('username', '').strip()
+    new_username = request.form.get('new_username', '').strip()
 
     if not new_username:
         flash('نام کاربری جدید الزامی است.', 'warning')
@@ -756,10 +778,81 @@ def change_password():
         return redirect(url_for("profile"))
     finally:
         conn.close()
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+import io
 
+@app.route('/export_pdf')
+def export_pdf():
+    if 'user_id' not in session:
+        flash('لطفاً وارد شوید.', 'warning')
+        return redirect(url_for('login'))
 
+    conn = get_db_connection()
+    try:
+        transactions = conn.execute(
+            'SELECT title, category, type, amount, date FROM transactions WHERE user_id = ? ORDER BY date DESC, id DESC',
+            (session['user_id'],)
+        ).fetchall()
+
+        if not transactions:
+            flash('هیچ تراکنشی برای خروجی PDF وجود ندارد.', 'warning')
+            return redirect(url_for('dashboard'))
+
+        # ایجاد فایل PDF در حافظه با استفاده از io.BytesIO
+        buffer = io.BytesIO()
+        p = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
+
+        # هدر صفحه
+        p.setFont("Helvetica-Bold", 16)
+        p.drawString(50, height - 50, "Financial Transactions Report")
+        p.setFont("Helvetica", 10)
+        p.drawString(50, height - 70, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # رسم جدول ساده تراکنش‌ها
+        y = height - 100
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(50, y, "Title")
+        p.drawString(200, y, "Category")
+        p.drawString(320, y, "Type")
+        p.drawString(400, y, "Amount")
+        p.drawString(480, y, "Date")
+        
+        y -= 15
+        p.line(50, y, width - 50, y)
+        y -= 20
+
+        p.setFont("Helvetica", 9)
+        for t in transactions:
+            if y < 50:  # اگر صفحه پر شد، صفحه جدید ایجاد کن
+                p.showPage()
+                y = height - 50
+                p.setFont("Helvetica", 9)
+
+            p.drawString(50, y, str(t['title'] or ''))
+            p.drawString(200, y, str(t['category'] or 'سایر'))
+            p.drawString(320, y, str(t['type']))
+            p.drawString(400, y, f"{t['amount']:,.0f}")
+            p.drawString(480, y, str(t['date']))
+            y -= 20
+
+        p.save()
+        buffer.seek(0)
+
+        filename = f"transactions_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        response = make_response(buffer.getvalue())
+        response.headers['Content-Disposition'] = f"attachment; filename={filename}"
+        response.headers['Content-type'] = 'application/pdf'
+        return response
+
+    except Exception as e:
+        print(f"PDF Export error: {e}")
+        flash('خطایی در تولید فایل PDF رخ داد.', 'danger')
+        return redirect(url_for('dashboard'))
+    finally:
+        conn.close()
 if __name__ == "__main__":
-    db_instance = db.Database()
-    db_instance.init_db()
     init_db()
     app.run(debug=True)
