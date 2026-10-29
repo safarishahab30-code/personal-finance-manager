@@ -108,6 +108,7 @@
         </div>
 
         <form action="{{ url_for('set_budget') }}" method="POST" class="budget-form">
+            <input type="hidden" name="month" value="{{ current_month }}">
             <div class="budget-inputs-row" style="display: flex; gap: 20px; align-items: flex-start; width: 100%; flex-wrap: wrap;">
                 <div class="input-group budget-limit-group" style="flex: 1; min-width: 240px; margin: 0;">
                     <label for="budget-limit-input">سقف بودجه ماهانه (تومان)</label>
@@ -462,7 +463,9 @@
                 format: 'YYYY/MM/DD',
                 autoClose: true,
                 altField: hiddenInput,
-                altFormat: 'YYYY-MM-DD'
+                altFormat: 'YYYY-MM-DD',
+                initialValue: true,          // مقداردهی اولیه به تاریخ امروز
+                initialValueType: 'persian'  // نوع مقدار پیش‌فرض
             });
         });
     });
@@ -609,6 +612,7 @@
     }
 
     // اسکرول خودکار به جدول پس از اعمال فیلترها
+    // اسکرول خودکار به جدول پس از اعمال فیلترها
     document.addEventListener("DOMContentLoaded", function() {
         const urlParams = new URLSearchParams(window.location.search);
 
@@ -628,6 +632,7 @@
         }
     });
 </script>
+
 <script>
     function toggleTheme() {
         const isLight = document.body.classList.toggle('light-mode');
@@ -654,40 +659,7 @@
 </script>
 
 <script>
-    const typeSelect = document.getElementById('transaction-type');
-    const categorySelect = document.getElementById('transaction-category');
-
-    if (typeSelect && categorySelect) {
-        typeSelect.addEventListener('change', function() {
-            const selectedType = this.value;
-            const options = categorySelect.querySelectorAll('option');
-
-            options.forEach(opt => {
-                if (!opt.value) return; // گزینه پیش‌فرض (انتخاب دسته‌بندی)
-                if (opt.getAttribute('data-type') === selectedType) {
-                    opt.style.display = 'block';
-                } else {
-                    opt.style.display = 'none';
-                }
-            });
-            categorySelect.value = '';
-        });
-    }
-    <script>
-    // تغییر لیست دسته‌بندی متناسب با نوع تراکنش
-    function updateCategoryList() {
-        const type = document.getElementById('txn-type').value;
-        const catInput = document.getElementById('category-input');
-        
-        if (type === 'income') {
-            catInput.setAttribute('list', 'income-categories');
-        } else {
-            catInput.setAttribute('list', 'expense-categories');
-        }
-        catInput.value = ''; // خالی کردن مقدار قبلی
-    }
-
-    // ذخیره موقعیت اسکرول قبل از ارسال فرم
+    // تغییر لیست دسته‌بندی متناسب با نوع تراکنش و حفظ موقعیت اسکرول
     const txnForm = document.querySelector('.transaction-form');
     if (txnForm) {
         txnForm.addEventListener('submit', function() {
@@ -695,7 +667,6 @@
         });
     }
 
-    // بازگرداندن اسکرول بعد از بارگذاری مجدد صفحه
     window.addEventListener('load', function() {
         const scrollPos = sessionStorage.getItem('scrollPos');
         if (scrollPos) {

@@ -365,7 +365,6 @@ def dashboard():
 
 # ---------------------------------------------------------------
 #  مدیریت تراکنش‌ها
-# ---------------------------------------------------------------
 @app.route('/add_transaction', methods=['POST'])
 def add_transaction():
     if 'user_id' not in session:
@@ -401,6 +400,23 @@ def add_transaction():
         )
         conn.commit()
         flash('تراکنش با موفقیت ثبت شد.', 'success')
+        if t_type == 'expense' and category:
+            current_month = date[:7]  # مثلا '2026-10' یا فرمت تاریخ ورودی
+
+            # بررسی وجود بودجه برای این دسته و ماه
+            budget = conn.execute("""
+                SELECT id, limit_amount FROM budgets
+                WHERE user_id = ? AND category = ? AND month = ?
+            """, (session['user_id'], category, current_month)).fetchone()
+            
+            if not budget:
+                # اگر بودجه‌ای وجود نداشت، یک رکورد پایه با سقف صفر می‌سازیم
+                conn.execute("""
+                    INSERT INTO budgets (user_id, category, limit_amount, month, created_at, updated_at)
+                    VALUES (?, ?, 0.0, ?, ?, ?)
+                """, (session['user_id'], category, current_month, now, now))
+                conn.commit()
+
     except sqlite3.Error as e:
         print(f"Add txn DB error: {e}")
         flash('خطایی در ثبت تراکنش رخ داد.', 'danger')
@@ -505,7 +521,9 @@ def set_budget():
 
     category = request.form.get('category', '').strip() or 'سایر'
     limit_amount = request.form.get('limit_amount', '').replace(',', '').strip()
-    month = request.form.get('month', '').strip() or datetime.now().strftime('%Y-%m')
+    month = request.form.get('month', '').strip()
+    if not month:
+        month = datetime.now().strftime('%Y-%m')
 
     try:
         limit_amount = float(limit_amount)
