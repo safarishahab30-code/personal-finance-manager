@@ -267,14 +267,13 @@
             <div class="input-group">
                 <label for="add-txn-date">تاریخ تراکنش</label>
                 <input
-                    type="text"
+                    type="date"
                     id="add-txn-date"
-                    class="p-datepicker"
-                    placeholder="انتخاب تاریخ؛ خالی بماند یعنی امروز"
-                    autocomplete="off"
+                    name="date"
+                    value="{{ today or '' }}"
                 >
-                <input type="hidden" name="date" id="add_txn_date_hidden">
             </div>
+            
 
             <div class="input-group">
                 <label>عنوان / توضیحات</label>

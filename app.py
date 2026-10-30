@@ -12,7 +12,6 @@ from data import database as db
 
 
 # مسیر واقعی دیتابیس
-DB_PATH = os.path.join('data', 'finance.db')
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "a_long_random_secret_key_for_dev_only_change_me")
@@ -21,6 +20,8 @@ app.secret_key = os.environ.get("SECRET_KEY", "a_long_random_secret_key_for_dev_
 # ---------------------------------------------------------------
 #  دسترسی به دیتابیس
 # ---------------------------------------------------------------
+DB_PATH = os.path.join('data', 'finance.db')
+
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -275,9 +276,11 @@ def dashboard():
         budgets_status = []
         for b in budgets:
             spent_row = conn.execute(
-                "SELECT SUM(amount) FROM transactions WHERE user_id = ? AND category = ? AND type = 'expense' AND strftime('%Y-%m', date) = ?",
-                (user_id, b['category'], current_month)
-            ).fetchone()
+                """SELECT SUM(amount) FROM transactions 
+                WHERE user_id = ? AND category = ? AND type = 'expense' 
+                AND date LIKE ?""",
+            (user_id, b['category'], f"{current_month}%")).fetchone()
+
             spent = spent_row[0] if spent_row and spent_row[0] else 0.0
             limit = b['limit_amount']
             percentage = (spent / limit * 100) if limit > 0 else 0
@@ -335,6 +338,7 @@ def dashboard():
         return render_template(
             'dashboard.html',
             username=session.get('username'),
+            current_month=current_month, 
             transactions=transactions,
             all_transactions=all_txns,
             total_income=total_income,
@@ -400,22 +404,37 @@ def add_transaction():
         )
         conn.commit()
         flash('تراکنش با موفقیت ثبت شد.', 'success')
-        if t_type == 'expense' and category:
-            current_month = date[:7]  # مثلا '2026-10' یا فرمت تاریخ ورودی
 
-            # بررسی وجود بودجه برای این دسته و ماه
+        # بررسی و اتصال به بودجه در صورت ثبت هزینه
+        # بررسی و اتصال به بودجه در صورت ثبت هزینه
+        if t_type == 'expense' and category:
+            current_month = date[:7] if len(date) >= 7 else datetime.now().strftime('%Y-%m')
+
             budget = conn.execute("""
                 SELECT id, limit_amount FROM budgets
                 WHERE user_id = ? AND category = ? AND month = ?
             """, (session['user_id'], category, current_month)).fetchone()
-            
+
             if not budget:
-                # اگر بودجه‌ای وجود نداشت، یک رکورد پایه با سقف صفر می‌سازیم
                 conn.execute("""
                     INSERT INTO budgets (user_id, category, limit_amount, month, created_at, updated_at)
                     VALUES (?, ?, 0.0, ?, ?, ?)
                 """, (session['user_id'], category, current_month, now, now))
                 conn.commit()
+                limit_amount = 0.0
+            else:
+                limit_amount = float(budget['limit_amount'])
+
+            # بررسی تجاوز از سقف بودجه
+            if limit_amount > 0:
+                total_spent_row = conn.execute("""
+                    SELECT SUM(amount) FROM transactions
+                    WHERE user_id = ? AND category = ? AND type = 'expense' AND date LIKE ?
+                    """, (session['user_id'], category, f"{current_month}%")).fetchone()
+
+                total_spent = total_spent_row[0] or 0.0
+                if total_spent > limit_amount:
+                    flash(f'هشدار: مجموع هزینه‌های دسته «{category}» از سقف بودجه تعیین‌شده ({limit_amount:,.0f} تومان) عبور کرد!', 'warning')
 
     except sqlite3.Error as e:
         print(f"Add txn DB error: {e}")
