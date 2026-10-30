@@ -9,6 +9,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from data import database as db
+import secrets
+import string
 
 
 # مسیر واقعی دیتابیس
@@ -92,7 +94,7 @@ def init_db():
 def index():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
-    return redirect(url_for('login'))
+    return render_template('intro.html')
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -890,6 +892,46 @@ def export_pdf():
         return redirect(url_for('dashboard'))
     finally:
         conn.close()
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        conn = get_db_connection()
+        try:
+            user = conn.execute(
+                "SELECT id FROM users WHERE username = ?", (username,)
+            ).fetchone()
+
+            if user:
+                temp_pw = generate_temporary_password()
+                hashed_pw = generate_password_hash(temp_pw)
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                conn.execute(
+                    "UPDATE users SET password_hash = ?, updated_at = ? WHERE username = ?",
+                    (hashed_pw, now, username)
+                )
+                conn.commit()
+
+                print(f"رمز موقت برای {username}: {temp_pw}")
+                flash(f"رمز موقت شما: {temp_pw}", "success")
+                return redirect(url_for("login"))
+            else:
+                flash("کاربری با این نام کاربری یافت نشد.", "danger")
+
+        except sqlite3.Error as e:
+            print(f"Forgot password DB error: {e}")
+            flash("خطایی در بازیابی رمز رخ داد.", "danger")
+            conn.rollback()
+        finally:
+            conn.close()
+
+    return render_template("forgot_password.html")
+
+def generate_temporary_password(length=10):
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)

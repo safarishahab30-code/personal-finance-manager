@@ -2,34 +2,16 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ورود به سامانه | Personal Finance</title>
+    <title>بازیابی رمز عبور</title>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
 </head>
 <body>
-
-    <div class="bg-glow-1"></div>
-    <div class="bg-glow-2"></div>
-
     <div class="card-wrapper">
         <div class="futuristic-card">
-
-            <div class="brand-icon">
-                <svg viewBox="0 0 24 24">
-                    <defs>
-                        <linearGradient id="icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#ec4899" />
-                            <stop offset="100%" stop-color="#8b5cf6" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14.5h-2v-2h2v2zm0-4h-2V7h2v5.5z"/>
-                </svg>
-            </div>
-
             <div class="auth-header">
-                <h2>ورود به سامانه</h2>
-                <p>سامانه مدیریت مالی شخصی</p>
+                <h2>بازیابی رمز عبور</h2>
+                <p>نام کاربری و رمز جدید خود را وارد کنید</p>
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -42,32 +24,32 @@
               {% endif %}
             {% endwith %}
 
-            <form method="POST" action="{{ url_for('login') }}">
+            <form method="POST" action="{{ url_for('forgot_password') }}">
                 <div class="form-group">
                     <label for="username">نام کاربری</label>
                     <div class="input-box">
-                        <input type="text" id="username" name="username" placeholder="نام کاربری خود را وارد کنید" required autocomplete="username">
+                        <input type="text" id="username" name="username" required>
                     </div>
                 </div>
-                
                 <div class="form-group">
-                    <label for="password">رمز عبور</label>
+                    <label for="new_password">رمز عبور جدید</label>
                     <div class="input-box">
-                        <input type="password" id="password" name="password" placeholder="رمز عبور خود را وارد کنید" required autocomplete="current-password">
+                        <input type="password" id="new_password" name="new_password" required>
                     </div>
                 </div>
-                
-                <button type="submit" class="btn-action">ورود به حساب</button>
+                <div class="form-group">
+                    <label for="confirm_password">تکرار رمز عبور جدید</label>
+                    <div class="input-box">
+                        <input type="password" id="confirm_password" name="confirm_password" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-action">تغییر رمز عبور</button>
             </form>
 
             <div class="auth-links">
-                <a href="#">فراموشی رمز عبور</a>
-                <span>•</span>
-                <a href="{{ url_for('register') }}">ایجاد حساب کاربری</a>
+                <a href="{{ url_for('login') }}">بازگشت به ورود</a>
             </div>
-
         </div>
     </div>
-
 </body>
 </html>
