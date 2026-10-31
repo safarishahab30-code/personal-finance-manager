@@ -12,6 +12,7 @@ from data import database as db
 import secrets
 import string
 from datetime import datetime, timezone
+import jdatetime
 
 # مسیر واقعی دیتابیس
 
@@ -204,6 +205,7 @@ def dashboard():
 
     user_id = session['user_id']
     current_month = datetime.now().strftime('%Y-%m')
+    today_jalali = jdatetime.date.today().strftime('%Y/%m/%d')
 
     # ۱. دریافت ورودی‌های فیلتر و جستجو
     search_query = request.args.get('search', '').strip()
@@ -342,6 +344,7 @@ def dashboard():
             username=session.get('username'),
             current_month=current_month, 
             transactions=transactions,
+            today=today_jalali,
             all_transactions=all_txns,
             total_income=total_income,
             total_expense=total_expense,
@@ -446,6 +449,29 @@ def add_transaction():
         conn.close()
 
     return redirect(url_for('dashboard'))
+from flask import jsonify
+
+@app.route('/delete_budget/<int:budget_id>', methods=['POST'])
+def delete_budget(budget_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'لطفاً وارد شوید.'}), 401
+
+    conn = get_db_connection()
+    try:
+        result = conn.execute(
+            'DELETE FROM budgets WHERE id = ? AND user_id = ?',
+            (budget_id, session['user_id'])
+        )
+        conn.commit()
+        if result.rowcount > 0:
+            return jsonify({'success': True, 'message': 'بودجه حذف شد.'})
+        else:
+            return jsonify({'success': False, 'message': 'بودجه یافت نشد.'}), 404
+    except sqlite3.Error as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        conn.close()
 
 @app.route('/edit_transaction/<int:txn_id>', methods=['GET', 'POST'])
 def edit_transaction(txn_id):
@@ -619,33 +645,6 @@ def edit_budget(budget_id):
         conn.close()
 
     return redirect(url_for('dashboard'))
-
-@app.route('/delete_budget/<int:budget_id>', methods=['POST'])
-def delete_budget(budget_id):
-    if 'user_id' not in session:
-        flash('لطفاً وارد شوید.', 'warning')
-        return redirect(url_for('login'))
-
-    conn = get_db_connection()
-    try:
-        result = conn.execute(
-            'DELETE FROM budgets WHERE id = ? AND user_id = ?',
-            (budget_id, session['user_id'])
-        )
-        conn.commit()
-        if result.rowcount > 0:
-            flash('بودجه حذف شد.', 'success')
-        else:
-            flash('بودجه یافت نشد.', 'warning')
-    except sqlite3.Error as e:
-        print(f"Delete budget DB error: {e}")
-        flash('خطایی در حذف بودجه رخ داد.', 'danger')
-        conn.rollback()
-    finally:
-        conn.close()
-
-    return redirect(url_for('dashboard'))
-
 
 # ---------------------------------------------------------------
 #  خروجی گزارش
