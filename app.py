@@ -13,6 +13,7 @@ import secrets
 import string
 from datetime import datetime, timezone
 import jdatetime
+from data.database import db
 
 # مسیر واقعی دیتابیس
 
@@ -196,7 +197,6 @@ def jalali_filter(date_value):
 # ---------------------------------------------------------------
 #  داشبورد
 from datetime import datetime, date, timedelta
-
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -207,7 +207,7 @@ def dashboard():
     current_month = datetime.now().strftime('%Y-%m')
     today_jalali = jdatetime.date.today().strftime('%Y/%m/%d')
 
-    # ۱. دریافت ورودی‌های فیلتر و جستجو
+    # ۱. دریافت ورودی‌های فیلتر
     search_query = request.args.get('search', '').strip()
     t_type_filter = request.args.get('type', '').strip()
     category_filter = request.args.get('category', '').strip()
@@ -215,7 +215,6 @@ def dashboard():
     start_date = request.args.get('start_date', '').strip()
     end_date = request.args.get('end_date', '').strip()
 
-    # ۲. محاسبه تاریخ مبدا برای فیلترهای زمانی سریع
     today = date.today()
     if quick_range == 'week':
         start_date = (today - timedelta(days=7)).isoformat()
@@ -226,7 +225,6 @@ def dashboard():
 
     conn = get_db_connection()
     try:
-        # دریافت تمامی تراکنش‌ها برای آمارهای کلی و نمودارها
         all_txns = conn.execute(
             'SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, id DESC',
             (user_id,)
@@ -238,10 +236,9 @@ def dashboard():
 
         categories = sorted(set(t['category'] for t in all_txns if t['category']))
 
-        # ۳. ساخت پرس‌وجوی پویا برای تراکنش‌های فیلترشده
+        # ساخت پرس‌وجوی پویا
         query = 'SELECT * FROM transactions WHERE user_id = ?'
         params = [user_id]
-
         if search_query:
             query += " AND (title LIKE ? OR category LIKE ?)"
             params.extend([f"%{search_query}%", f"%{search_query}%"])
@@ -261,7 +258,7 @@ def dashboard():
         query += ' ORDER BY date DESC, id DESC'
         transactions = conn.execute(query, params).fetchall()
 
-        # داده چارت هزینه‌ها بر اساس دسته‌بندی
+        # داده چارت
         category_totals = {}
         for t in all_txns:
             if t['type'] == 'expense':
@@ -271,7 +268,7 @@ def dashboard():
         chart_labels = list(category_totals.keys())
         chart_data = list(category_totals.values())
 
-        # بودجه‌های ماه جاری
+        # بودجه‌ها
         budgets = conn.execute(
             'SELECT * FROM budgets WHERE user_id = ? AND month = ?',
             (user_id, current_month)
@@ -297,47 +294,38 @@ def dashboard():
                 'percentage': round(percentage, 1)
             })
 
-        # استخراج دسته‌بندی‌های قبلی ثبت‌شده توسط کاربر
-        user_expense_cats = [
-            r[0]
-            for r in conn.execute(
-                "SELECT DISTINCT category FROM transactions WHERE user_id = ? AND type = 'expense'",
-                (user_id,),
-            ).fetchall()
-            if r[0]
-        ]
-        user_income_cats = [
-            r[0]
-            for r in conn.execute(
-                "SELECT DISTINCT category FROM transactions WHERE user_id = ? AND type = 'income'",
-                (user_id,),
-            ).fetchall()
-            if r[0]
-        ]
+        # --- محاسبات قلک و اهداف مالی ---
+        raw_goals = conn.execute(
+            'SELECT * FROM savings_goals WHERE user_id = ? ORDER BY id DESC',
+            (user_id,)
+        ).fetchall()
 
-        # ادغام با دسته‌بندی‌های پیش‌فرض بدون تکرار
-        default_expenses = [
-            'خوراکی و سوپرمارکت',
-            'اجاره و قبوض',
-            'حمل و نقل',
-            'پوشاک',
-            'تفریح و سرگرمی',
-            'درمان و سلامت',
-        ]
-        default_incomes = [
-            'حقوق',
-            'پاداش',
-            'فروش کتاب',
-            'سرمایه‌گذاری',
-            'یارانه',
-        ]
+        savings_goals = []
+        for g in raw_goals:
+            goal_dict = dict(g)
+            progress = (goal_dict['current_amount'] / goal_dict['target_amount'] * 100) if goal_dict['target_amount'] > 0 else 0
+            goal_dict['progress'] = min(round(progress, 1), 100)
+            savings_goals.append(goal_dict)
 
-        expense_categories = list(
-            dict.fromkeys(default_expenses + user_expense_cats)
-        )
-        income_categories = list(
-            dict.fromkeys(default_incomes + user_income_cats)
-        )
+        # --- متغیرهای بودجه برای استفاده در قالب ---
+        total_budget_limit = sum(b['limit_amount'] for b in budgets_status) if budgets_status else 0
+        total_budget_spent = sum(b['spent_amount'] for b in budgets_status) if budgets_status else 0
+        remaining_budget = max(0, total_budget_limit - total_budget_spent)
+
+        # --- محاسبات خرج امن روزانه (مبتنی بر موجودی کل) ---
+        today_shamsi = jdatetime.date.today()
+        days_in_month = 31 if today_shamsi.month <= 6 else (30 if today_shamsi.month <= 11 else (30 if today_shamsi.isleap() else 29))
+        days_left = max((days_in_month - today_shamsi.day) + 1, 1)
+
+        safe_daily_spend = int(max(0, balance) / days_left) if balance > 0 else 0
+
+        # -----------------------------------------------------------
+
+        user_expense_cats = [r[0] for r in conn.execute("SELECT DISTINCT category FROM transactions WHERE user_id = ? AND type = 'expense'", (user_id,)).fetchall() if r[0]]
+        user_income_cats = [r[0] for r in conn.execute("SELECT DISTINCT category FROM transactions WHERE user_id = ? AND type = 'income'", (user_id,)).fetchall() if r[0]]
+        
+        default_expenses = ['خوراکی و سوپرمارکت', 'اجاره و قبوض', 'حمل و نقل', 'پوشاک', 'تفریح و سرگرمی', 'درمان و سلامت']
+        default_incomes = ['حقوق', 'پاداش', 'فروش کتاب', 'سرمایه‌گذاری', 'یارانه']
 
         return render_template(
             'dashboard.html',
@@ -346,20 +334,23 @@ def dashboard():
             transactions=transactions,
             today=today_jalali,
             all_transactions=all_txns,
+            safe_daily_spend=safe_daily_spend,
+            days_left=days_left,
+            total_budget_limit=total_budget_limit,
             total_income=total_income,
             total_expense=total_expense,
             balance=balance,
             categories=categories,
-            expense_categories=expense_categories,
-            income_categories=income_categories,
+            expense_categories=list(dict.fromkeys(default_expenses + user_expense_cats)),
+            income_categories=list(dict.fromkeys(default_incomes + user_income_cats)),
             chart_labels=chart_labels,
             chart_data=chart_data,
             budgets=budgets,
             budgets_status=budgets_status,
+            savings_goals=savings_goals,
             search_query=search_query,
-            type_filter=t_type_filter,
             selected_type=t_type_filter,
-            category_filter=category_filter,
+            selected_category=category_filter,
             quick_range=quick_range,
             start_date=start_date,
             end_date=end_date,
@@ -528,8 +519,93 @@ def edit_transaction(txn_id):
         return redirect(url_for('dashboard'))
     finally:
         conn.close()
+@app.route("/savings/add", methods=["POST"])
+def add_savings_goal():
+    """ثبت هدف مالی جدید"""
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    title = request.form.get("title", "").strip()
+    raw_amount = request.form.get("target_amount", "").replace(",", "").strip()
+    deadline = request.form.get("deadline", "").strip() or None
+
+    try:
+        target_amount = float(raw_amount)
+    except (ValueError, TypeError):
+        target_amount = 0
+
+    if not title or target_amount <= 0:
+        flash("عنوان و مبلغ هدف را به درستی وارد کنید.", "error")
+        return redirect(url_for("dashboard"))
+
+    db.add_savings_goal(
+        user_id=session["user_id"],
+        title=title,
+        target_amount=target_amount,
+        deadline=deadline,
+        current_amount=0
+    )
+    flash("هدف مالی جدید با موفقیت ایجاد شد.", "success")
+    return redirect(url_for("dashboard"))
 
 
+@app.route('/savings/withdraw/<int:goal_id>', methods=['POST'])
+def withdraw_savings(goal_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    raw_amount = request.form.get('amount', '0').replace(',', '').strip()
+    try:
+        amount = float(raw_amount)
+    except (ValueError, TypeError):
+        amount = 0
+
+    if amount > 0:
+        conn = get_db_connection()
+        goal = conn.execute('SELECT current_amount FROM savings_goals WHERE id = ? AND user_id = ?', 
+                            (goal_id, session['user_id'])).fetchone()
+        if goal:
+            new_amount = max(0.0, goal['current_amount'] - amount)
+            conn.execute('UPDATE savings_goals SET current_amount = ? WHERE id = ?', (new_amount, goal_id))
+            conn.commit()
+            flash('مبلغ با موفقیت از قلک برداشت شد.', 'info')
+        conn.close()
+    return redirect(url_for('dashboard'))
+
+
+@app.route("/savings/deposit/<int:goal_id>", methods=["POST"])
+def deposit_savings(goal_id):
+    """واریز وجه به قلک"""
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    raw_amount = request.form.get("amount", "0").replace(",", "").strip()
+    try:
+        amount = float(raw_amount)
+    except (ValueError, TypeError):
+        amount = 0
+
+    if amount <= 0:
+        flash("مبلغ واریزی معتبر نیست.", "error")
+        return redirect(url_for("dashboard"))
+
+    success = db.update_savings_goal_amount(goal_id, session["user_id"], amount)
+    if success:
+        flash("واریز به قلک انجام شد.", "success")
+    else:
+        flash("خطا در انجام واریز.", "error")
+
+    return redirect(url_for("dashboard"))
+
+@app.route("/savings/delete/<int:goal_id>", methods=["POST"])
+def delete_savings_goal(goal_id):
+    """حذف هدف مالی"""
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    db.delete_savings_goal(goal_id, session["user_id"])
+    flash("هدف مالی حذف شد.", "info")
+    return redirect(url_for("dashboard"))
 @app.route('/delete_transaction/<int:txn_id>', methods=['POST'])
 def delete_transaction(txn_id):
     if 'user_id' not in session:

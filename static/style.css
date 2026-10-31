@@ -926,3 +926,58 @@ body.light-mode .input-group select option {
   background: #f3e8ff;
   color: #181522;
 }
+/* ظرف قلک تعاملی */
+.piggy-card {
+  background: rgba(26, 26, 36, 0.7);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 16px;
+  padding: 1.25rem;
+  position: relative;
+  backdrop-filter: blur(10px);
+}
+.piggy-completed {
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+}
+.coin-slot {
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+.coin-slot.locked {
+  transform: translateY(4px) scaleX(0.85);
+  opacity: 0.2;
+}
+.piggy-liquid {
+  transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.savings-input-group input {
+  padding: 10px 14px;
+  font-size: 15px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.savings-actions button {
+  padding: 8px 16px;
+  font-weight: 600;
+}
+/* دکمه واریز (مثلاً مثبت) */
+.btn-deposit {
+  background-color: #10b981 !important; /* سبز واضح */
+  color: #ffffff !important;
+  opacity: 1 !important;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+/* دکمه برداشت (مثلاً منفی) */
+.btn-withdraw {
+  background-color: #ef4444 !important; /* قرمز واضح */
+  color: #ffffff !important;
+  opacity: 1 !important;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+}

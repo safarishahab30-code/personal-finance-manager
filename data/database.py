@@ -1,8 +1,10 @@
 import sqlite3
 from pathlib import Path
 
+
 def farsi(text):
     return str(text)
+
 
 class Database:
     def __init__(self, db_path="data/finance.db"):
@@ -77,6 +79,24 @@ class Database:
                         REFERENCES users (id)
                         ON DELETE CASCADE,
                     UNIQUE(user_id, category, month)
+                )
+                """
+            )
+
+            # جدول قلک و اهداف مالی
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS savings_goals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    target_amount REAL NOT NULL,
+                    current_amount REAL DEFAULT 0,
+                    deadline TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id)
+                        REFERENCES users (id)
+                        ON DELETE CASCADE
                 )
                 """
             )
@@ -255,5 +275,67 @@ class Database:
                 (user_id, month)
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def add_savings_goal(self, user_id, title, target_amount, deadline=None, current_amount=0):
+        """ثبت هدف مالی جدید"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO savings_goals (user_id, title, target_amount, current_amount, deadline)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (user_id, title, target_amount, current_amount, deadline)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_savings_goals(self, user_id):
+        """دریافت اهداف مالی کاربر همراه با درصد پیشرفت"""
+        with self.get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, user_id, title, target_amount, current_amount, deadline, created_at
+                FROM savings_goals
+                WHERE user_id = ?
+                ORDER BY id DESC
+                """,
+                (user_id,)
+            ).fetchall()
+
+        goals = []
+        for row in rows:
+            goal = dict(row)
+            progress = (goal["current_amount"] / goal["target_amount"] * 100) if goal["target_amount"] > 0 else 0
+            goal["progress"] = min(round(progress, 1), 100)
+            goals.append(goal)
+        return goals
+
+    def update_savings_goal_amount(self, goal_id, user_id, amount_to_add):
+        """واریز وجه به قلک و افزایش پس‌انداز"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE savings_goals
+                SET current_amount = current_amount + ?
+                WHERE id = ? AND user_id = ?
+                """,
+                (amount_to_add, goal_id, user_id)
+            )
+            conn.commit()
+        return cursor.rowcount == 1
+
+    def delete_savings_goal(self, goal_id, user_id):
+        """حذف هدف مالی توسط مالک آن"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                DELETE FROM savings_goals
+                WHERE id = ? AND user_id = ?
+                """,
+                (goal_id, user_id)
+            )
+            conn.commit()
+        return cursor.rowcount == 1
+
 
 db = Database()

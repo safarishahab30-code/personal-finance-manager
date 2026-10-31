@@ -14,7 +14,6 @@
     <script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
     <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
         .today-badge {
             display: inline-flex;
@@ -38,7 +37,32 @@
             color: #38bdf8;
             font-weight: 700;
         }
+
+        /* استایل‌های کارت و قلک تعاملی */
+        .piggy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .piggy-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            border-radius: 16px;
+            padding: 1.25rem;
+            position: relative;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .piggy-completed {
+            border-color: rgba(245, 158, 11, 0.7) !important;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+        }
+        .piggy-liquid {
+            transition: y 0.8s cubic-bezier(0.4, 0, 0.2, 1), height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
     </style>
+ 
 </head>
 
 <body class="dashboard-body">
@@ -111,7 +135,27 @@
             </div>
         </div>
     </section>
-
+        <!-- Safe Daily Spend Card -->
+        <div class="summary-card glass-card" style="border-top: 3px solid #38bdf8;">
+            <div class="summary-icon">🛡️</div>
+            <div>
+                <span>خرج امن روزانه (تا پایان ماه)</span>
+                <strong>
+                {% if safe_daily_spend is not none %}
+                {{ "{:,.0f}".format(safe_daily_spend) }}
+                <small>تومان/روز</small>
+                {% else %}
+                <small style="font-size: 13px; color: var(--muted);">بودجه‌ای تعریف نشده</small>
+                {% endif %}
+                </strong>
+                {% if safe_daily_spend is not none %}
+                    <small style="color: #38bdf8; display: block; margin-top: 4px; font-size: 11px;">
+                        {{ days_left }} روز باقی‌مانده از ماه
+                    </small>
+                 {% endif %}
+            </div>
+        </div>
+   
     <!-- Analytics Charts Section -->
     <section class="glass-card section-card">
         <div class="section-heading">
@@ -244,6 +288,122 @@
             </div>
         {% else %}
             <div class="empty-state">هنوز بودجه‌ای برای ماه جاری تعیین نشده است.</div>
+        {% endif %}
+    </section>
+    <!-- بخش قلک و اهداف مالی هوشمند -->
+    <section class="glass-card section-card">
+        <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <div>
+                <span class="section-label">پس‌انداز و اهداف</span>
+                <h2>قلک هوشمند مالی</h2>
+            </div>
+        </div>
+
+        <!-- پیام داینامیک وضعیت عملیات قلک -->
+        <div id="savings-message" style="min-height: 24px; text-align: center; font-size: 13px; font-weight: 500; margin: 4px 0 14px 0; transition: all 0.3s ease;"></div>
+
+        <!-- فرم ساخت هدف جدید -->
+        <form action="{{ url_for('add_savings_goal') }}" method="POST" class="budget-form" style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; width: 100%;">
+                <div class="input-group" style="flex: 2; min-width: 200px; margin: 0;">
+                    <label>عنوان هدف (مثلاً خرید لپ‌تاپ)</label>
+                    <input type="text" name="title" placeholder="هدف جدید..." required>
+                </div>
+                <div class="input-group" style="flex: 2; min-width: 180px; margin: 0;">
+                    <label>مبلغ هدف (تومان)</label>
+                    <input type="text" name="target_amount" placeholder="مثلاً 10,000,000" required oninput="formatAmountInput(this)">
+                </div>
+                <div style="flex: 1; min-width: 140px; display: flex; align-items: flex-end;">
+                    <button type="submit" class="btn-submit" style="width: 100%; height: 46px; margin: 0;">+ ایجاد قلک</button>
+                </div>
+            </div>
+        </form>
+
+        {% if savings_goals %}
+            <div class="piggy-grid">
+                {% for goal in savings_goals %}
+                    <div class="piggy-card {% if goal.progress >= 100 %}piggy-completed{% endif %}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong style="color: #f8f7ff; font-size: 15px;">{{ goal.title }}</strong>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: {% if goal.progress >= 100 %}rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);{% else %}rgba(168, 85, 247, 0.2); color: #c084fc;{% endif %}">
+                                    {% if goal.progress >= 100 %}تکمیل شد 🔒{% else %}{{ goal.progress }}%{% endif %}
+                                </span>
+                                <form action="{{ url_for('delete_savings_goal', goal_id=goal.id) }}" method="POST" onsubmit="return confirm('آیا از حذف این قلک اطمینان دارید؟');" style="display: inline;">
+                                    <button type="submit" style="background: none; border: none; cursor: pointer; padding: 0; font-size: 13px;">🗑️</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- قلک تعاملی SVG متصل به درصد پیشرفت -->
+                        <div style="width: 130px; height: 110px; margin: 10px auto; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 120 100" style="width: 100%; height: 100%; overflow: visible;">
+                                <defs>
+                                    <linearGradient id="fillGrad-{{ goal.id }}" x1="0%" y1="100%" x2="0%" y2="0%">
+                                        <stop offset="0%" stop-color="#7c3aed" />
+                                        <stop offset="100%" stop-color="#c084fc" />
+                                    </linearGradient>
+                                    <clipPath id="piggyMask-{{ goal.id }}">
+                                        <ellipse cx="60" cy="55" rx="38" ry="30" />
+                                    </clipPath>
+                                </defs>
+
+                                <!-- پایه‌ها -->
+                                <rect x="36" y="80" width="10" height="12" rx="4" fill="#581c87" />
+                                <rect x="74" y="80" width="10" height="12" rx="4" fill="#581c87" />
+
+                                <!-- بدنه شیشه‌ای شفاف -->
+                                <ellipse cx="60" cy="55" rx="38" ry="30" fill="rgba(255, 255, 255, 0.05)" stroke="#a855f7" stroke-width="2.5" />
+
+                                <!-- مایع/سکه‌ها بر اساس درصد -->
+                                <g clip-path="url(#piggyMask-{{ goal.id }})">
+                                    <rect class="piggy-liquid" x="20" y="{{ 85 - (goal.progress * 0.6) }}" width="80" height="{{ goal.progress * 0.6 }}" fill="url(#fillGrad-{{ goal.id }})" />
+                                </g>
+
+                                <!-- اجزای قلک -->
+                                <path d="M 35 32 Q 40 20 48 30 Z" fill="#7c3aed" stroke="#a855f7" stroke-width="1.5" />
+                                <ellipse cx="23" cy="54" rx="6" ry="10" fill="#9333ea" stroke="#a855f7" stroke-width="1.5" />
+                                <circle cx="36" cy="46" r="3" fill="#ffffff" />
+                                <circle cx="35" cy="46" r="1.5" fill="#0f172a" />
+
+                                <!-- شیار / درپوش بسته شده با تکمیل ۱۰۰٪ -->
+                                <rect x="52" y="24" width="16" height="3" rx="1.5" fill="{% if goal.progress >= 100 %}#f59e0b{% else %}#e2e8f0{% endif %}" />
+                                {% if goal.progress >= 100 %}
+                                <circle cx="60" cy="22" r="4" fill="#f59e0b" />
+                                <path d="M 58 22 L 62 22" stroke="#1e1b4b" stroke-width="1.5" />
+                                {% endif %}
+                            </svg>
+                        </div>
+                        <!-- نمایش مقادیر -->
+                        <div style="text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 14px;">
+                            <span style="color: #38bdf8; font-weight: bold; font-size: 15px;">{{ "{:,.0f}".format(goal.current_amount) }}</span>
+                            از
+                            <span>{{ "{:,.0f}".format(goal.target_amount) }} تومان</span>
+                        </div>
+
+                        <!-- عملیات واریز و برداشت با فرمت زنده و ساختار کاملاً متقارن -->
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            {% if goal.progress < 100 %}
+                            <form action="{{ url_for('deposit_savings', goal_id=goal.id) }}" method="POST" class="savings-ajax-form" style="display: flex; gap: 6px;">
+                                <input type="text" name="amount" placeholder="+ واریز (تومان)" required autocomplete="off" oninput="formatAmountInput(this)" style="flex: 1; padding: 8px 10px; font-size: 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(34,197,94,0.4); border-radius: 8px; color: #fff; text-align: right;">
+                                <button type="submit" style="padding: 0 14px; background: #16a34a; border: 1px solid #22c55e; color: #fff; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px;" title="واریز">+</button>
+                            </form>
+                            {% endif %}
+
+                            {% if goal.current_amount > 0 %}
+                            <form action="{{ url_for('withdraw_savings', goal_id=goal.id) }}" method="POST" class="savings-ajax-form" style="display: flex; gap: 6px;">
+                                <input type="text" name="amount" placeholder="- برداشت (تومان)" required autocomplete="off" oninput="formatAmountInput(this)" style="flex: 1; padding: 8px 10px; font-size: 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(239,68,68,0.4); border-radius: 8px; color: #fff; text-align: right;">
+                                <button type="submit" style="padding: 0 14px; background: #dc2626; border: 1px solid #ef4444; color: #fff; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px;" title="برداشت">-</button>
+                            </form>
+                            {% endif %}
+                        </div>
+
+                    </div>
+
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">هنوز هیچ قلکی ایجاد نشده است؛ اولین هدف خود را در بالا بسازید.</div>
         {% endif %}
     </section>
 
@@ -776,6 +936,74 @@ function deleteBudget(budgetId) {
     .catch(error => console.error('Error:', error));
 }
 </script>
+</body>
+<script>// مدیریت ایجکس فرم‌های واریز و برداشت قلک
+    document.querySelectorAll('form[action*="deposit_savings"], form[action*="withdraw_savings"]').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const msgDiv = document.getElementById('savings-message');
+    
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+    
+                if (response.ok) {
+                    // رلود صفحه برای به‌روزرسانی مقادیر قلک یا دریافت پاسخ JSON
+                    location.reload();
+                } else {
+                    if (msgDiv) {
+                        msgDiv.textContent = 'خطا در انجام عملیات.';
+                        msgDiv.style.color = '#f87171';
+                    }
+                }
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        });
+    });
+</script>
+<script>
+    document.querySelectorAll('.savings-ajax-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const msgDiv = document.getElementById('savings-message');
+            
+            // ذخیره موقعیت اسکرول فعلی برای جلوگیری کامل از پرش
+            sessionStorage.setItem('scrollPos', window.scrollY);
+
+            // پاک‌کردن کاماها از عدد قبل از ارسال به سرور پایتون
+            const input = this.querySelector('input[name="amount"]');
+            const rawAmount = input.value.replace(/,/g, '').trim();
+
+            const formData = new FormData();
+            formData.append('amount', rawAmount);
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    if (msgDiv) {
+                        msgDiv.textContent = 'خطا در ثبت عملیات قلک.';
+                        msgDiv.style.color = '#f87171';
+                    }
+                }
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        });
+    });
+</script>
+
 </body>
 </html>
 
