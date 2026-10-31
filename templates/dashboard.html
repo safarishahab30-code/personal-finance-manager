@@ -429,15 +429,9 @@
                         </td>
                         <td class="actions-cell">
                             <a href="{{ url_for('edit_transaction', txn_id=t['id']) }}" class="icon-btn edit-btn" title="ویرایش">✏️</a>
-                            <form action="{{ url_for('delete_transaction', txn_id=t['id']) }}" method="POST" style="display:inline;">
-                                <button
-                                    type="submit"
-                                    class="icon-btn delete-btn"
-                                    title="حذف"
-                                    onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟');"
-                                    style="background:none; border:none; cursor:pointer;"
-                                >🗑️</button>
-                            </form>
+                            <form action="{{ url_for('delete_transaction', txn_id=t['id']) }}" method="POST" class="delete-form" style="display:inline;">
+                                <button type="submit" class="icon-btn delete-btn" title="حذف" style="background:none; border:none; cursor:pointer;">🗑️</button>
+                            </form>                            
                         </td>
                     </tr>
                     {% else %}
@@ -674,6 +668,40 @@
         }
     });
 </script>
-
+<script>
+    document.querySelectorAll('.delete-form').forEach(form => {
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault(); // جلوگیری از رفرش صفحه
+    
+        if (!confirm('آیا از حذف این تراکنش مطمئن هستید؟')) {
+          return;
+        }
+    
+        const row = this.closest('tr'); // پیدا کردن سطر جدول
+    
+        try {
+          const response = await fetch(this.action, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+    
+          if (response.ok) {
+            // حذف نرم سطر از جدول بدون پرش
+            row.style.transition = 'opacity 0.3s ease';
+            row.style.opacity = '0';
+            setTimeout(() => row.remove(), 300);
+          } else {
+            alert('خطا در حذف تراکنش');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('ارتباط با سرور برقرار نشد');
+        }
+      });
+    });
+</script>
+    
 </body>
 </html>

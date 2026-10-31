@@ -11,7 +11,7 @@ from datetime import datetime
 from data import database as db
 import secrets
 import string
-
+from datetime import datetime, timezone
 
 # مسیر واقعی دیتابیس
 
@@ -802,7 +802,7 @@ def change_password():
             return redirect(url_for("profile"))
 
         new_hash = generate_password_hash(new_password)
-        now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         conn.execute(
             "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
