@@ -16,9 +16,18 @@ def client():
     yield client
     os.close(db_fd)
 
-def login_helper(client, username="shahab", password="password123"):
-    client.post('/register', data={'username': username, 'password': password}, follow_redirects=True)
-    return client.post('/login', data={'username': username, 'password': password}, follow_redirects=True)
+def login_helper(client):
+    # ابتدا ثبت‌نام کاربر تستی
+    client.post('/register', data={
+        'username': 'testuser',
+        'password': '*******'
+    }, follow_redirects=True)
+
+    # سپس ورود به سیستم
+    client.post('/login', data={
+        'username': 'testuser',
+        'password': '*******'
+    }, follow_redirects=True)
 
 def test_1_budget_workflow(client):
     login_helper(client)

@@ -233,3 +233,317 @@ body {
 .auth-links span {
     color: rgba(255, 255, 255, 0.15);
 }
+/* انیمیشن ظاهر شدن کارت به صورت نرم و مقداری به سمت بالا */
+@keyframes cardEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* اعمال انیمیشن به کارت اصلی احراز هویت */
+.futuristic-card {
+    animation: cardEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* افکت هاور و پولس (تپش ملایم) روی دکمه عملیات */
+.btn-action {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+}
+
+/* افکت تمرکز (Focus) نرم روی اینپوت‌ها */
+input {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus {
+    border-color: #a855f7;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+}
+/* پس‌زمینه و لایه‌بندی افکت‌ها */
+body {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+}
+
+.card-wrapper {
+    position: relative;
+    z-index: 2;
+}
+
+/* لایه تزئینی پشت کارت */
+.auth-effects {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 18% 20%, rgba(168, 55, 255, .15), transparent 32%),
+        radial-gradient(ellipse at 82% 72%, rgba(0, 210, 255, .12), transparent 34%);
+}
+
+/* انیمیشن ۱: مدارهای نئونی */
+.orbit {
+    position: absolute;
+    width: 360px;
+    height: 150px;
+    border: 1px solid rgba(190, 70, 255, .55);
+    border-radius: 50%;
+    box-shadow: 0 0 18px rgba(175, 50, 255, .25),
+                inset 0 0 18px rgba(0, 200, 255, .12);
+    animation: orbit-spin 12s linear infinite;
+}
+
+.orbit-one {
+    top: 18%;
+    left: -100px;
+    transform: rotate(-25deg);
+}
+
+.orbit-two {
+    right: -120px;
+    bottom: 12%;
+    border-color: rgba(0, 210, 255, .55);
+    animation-duration: 17s;
+    animation-direction: reverse;
+}
+
+@keyframes orbit-spin {
+    from { rotate: 0deg; }
+    to   { rotate: 360deg; }
+}
+
+/* انیمیشن ۲: اشکال شناور */
+.float-shape {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border: 1px solid #bd64ff;
+    background: linear-gradient(135deg, rgba(188, 70, 255, .8), rgba(0, 210, 255, .5));
+    box-shadow: 0 0 22px rgba(160, 70, 255, .7);
+    animation: shape-float 5s ease-in-out infinite;
+}
+
+.shape-one {
+    top: 24%;
+    left: 12%;
+    transform: rotate(45deg);
+}
+
+.shape-two {
+    right: 13%;
+    bottom: 25%;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    animation-delay: 1.6s;
+}
+
+@keyframes shape-float {
+    0%, 100% { translate: 0 0; }
+    50%      { translate: 14px -24px; }
+}
+
+/* انیمیشن ۳: چشمک و تپش ذرات نور */
+.spark {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 8px 3px #bb48ff, 0 0 20px 6px #783bff;
+    animation: spark-pulse 2s ease-in-out infinite;
+}
+
+.spark-one {
+    top: 30%;
+    right: 22%;
+}
+
+.spark-two {
+    bottom: 20%;
+    left: 24%;
+    animation-delay: 1s;
+}
+
+@keyframes spark-pulse {
+    0%, 100% { opacity: .35; scale: .7; }
+    50%      { opacity: 1; scale: 1.5; }
+}
+
+/* انیمیشن ۴: ورود نرم کارت */
+.futuristic-card {
+    animation: card-enter .8s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes card-enter {
+    from {
+        opacity: 0;
+        transform: translateY(22px) scale(.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* کاهش حرکت برای کاربرانی که این گزینه را در سیستم فعال کرده‌اند */
+@media (prefers-reduced-motion: reduce) {
+    .orbit,
+    .float-shape,
+    .spark,
+    .futuristic-card {
+        animation: none;
+    }
+}
+/* پس‌زمینه و لایه‌بندی افکت‌ها */
+body {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+}
+
+.card-wrapper {
+    position: relative;
+    z-index: 2;
+}
+
+/* لایه تزئینی پشت کارت */
+.auth-effects {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 18% 20%, rgba(168, 55, 255, .15), transparent 32%),
+        radial-gradient(ellipse at 82% 72%, rgba(0, 210, 255, .12), transparent 34%);
+}
+
+/* انیمیشن ۱: مدارهای نئونی */
+.orbit {
+    position: absolute;
+    width: 360px;
+    height: 150px;
+    border: 1px solid rgba(190, 70, 255, .55);
+    border-radius: 50%;
+    box-shadow: 0 0 18px rgba(175, 50, 255, .25),
+                inset 0 0 18px rgba(0, 200, 255, .12);
+    animation: orbit-spin 12s linear infinite;
+}
+
+.orbit-one {
+    top: 18%;
+    left: -100px;
+    transform: rotate(-25deg);
+}
+
+.orbit-two {
+    right: -120px;
+    bottom: 12%;
+    border-color: rgba(0, 210, 255, .55);
+    animation-duration: 17s;
+    animation-direction: reverse;
+}
+
+@keyframes orbit-spin {
+    from { rotate: 0deg; }
+    to   { rotate: 360deg; }
+}
+
+/* انیمیشن ۲: اشکال شناور */
+.float-shape {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border: 1px solid #bd64ff;
+    background: linear-gradient(135deg, rgba(188, 70, 255, .8), rgba(0, 210, 255, .5));
+    box-shadow: 0 0 22px rgba(160, 70, 255, .7);
+    animation: shape-float 5s ease-in-out infinite;
+}
+
+.shape-one {
+    top: 24%;
+    left: 12%;
+    transform: rotate(45deg);
+}
+
+.shape-two {
+    right: 13%;
+    bottom: 25%;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    animation-delay: 1.6s;
+}
+
+@keyframes shape-float {
+    0%, 100% { translate: 0 0; }
+    50%      { translate: 14px -24px; }
+}
+
+/* انیمیشن ۳: چشمک و تپش ذرات نور */
+.spark {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 8px 3px #bb48ff, 0 0 20px 6px #783bff;
+    animation: spark-pulse 2s ease-in-out infinite;
+}
+
+.spark-one {
+    top: 30%;
+    right: 22%;
+}
+
+.spark-two {
+    bottom: 20%;
+    left: 24%;
+    animation-delay: 1s;
+}
+
+@keyframes spark-pulse {
+    0%, 100% { opacity: .35; scale: .7; }
+    50%      { opacity: 1; scale: 1.5; }
+}
+
+/* انیمیشن ۴: ورود نرم کارت */
+.futuristic-card {
+    animation: card-enter .8s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes card-enter {
+    from {
+        opacity: 0;
+        transform: translateY(22px) scale(.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* کاهش حرکت برای کاربرانی که این گزینه را در سیستم فعال کرده‌اند */
+@media (prefers-reduced-motion: reduce) {
+    .orbit,
+    .float-shape,
+    .spark,
+    .futuristic-card {
+        animation: none;
+    }
+}

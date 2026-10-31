@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>بازیابی رمز عبور</title>
+    <title>ورود به سیستم</title>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
 </head>
@@ -10,8 +10,8 @@
     <div class="card-wrapper">
         <div class="futuristic-card">
             <div class="auth-header">
-                <h2>بازیابی رمز عبور</h2>
-                <p>نام کاربری و رمز جدید خود را وارد کنید</p>
+                <h2>ورود به حساب کاربری</h2>
+                <p>برای دسترسی به داشبورد وارد شوید</p>
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -24,30 +24,26 @@
               {% endif %}
             {% endwith %}
 
-            <form method="POST" action="{{ url_for('forgot_password') }}">
+            <form method="POST" action="{{ url_for('login') }}">
                 <div class="form-group">
                     <label for="username">نام کاربری</label>
                     <div class="input-box">
-                        <input type="text" id="username" name="username" required>
+                        <input type="text" id="username" name="username" required autofocus>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="new_password">رمز عبور جدید</label>
+                    <label for="password">رمز عبور</label>
                     <div class="input-box">
-                        <input type="password" id="new_password" name="new_password" required>
+                        <input type="password" id="password" name="password" required>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="confirm_password">تکرار رمز عبور جدید</label>
-                    <div class="input-box">
-                        <input type="password" id="confirm_password" name="confirm_password" required>
-                    </div>
-                </div>
-                <button type="submit" class="btn-action">تغییر رمز عبور</button>
+                <button type="submit" class="btn-action">ورود</button>
             </form>
 
             <div class="auth-links">
-                <a href="{{ url_for('login') }}">بازگشت به ورود</a>
+                <a href="{{ url_for('forgot_password') }}">فراموشی رمز عبور؟</a>
+                <span> | </span>
+                <a href="{{ url_for('register') }}">ایجاد حساب کاربری</a>
             </div>
         </div>
     </div>
