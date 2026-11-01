@@ -14,6 +14,7 @@ import string
 from datetime import datetime, timezone
 import jdatetime
 from data.database import db
+from reports import export_transactions_excel, export_transactions_csv, export_transactions_pdf
 
 # مسیر واقعی دیتابیس
 
@@ -1006,6 +1007,115 @@ def forgot_password():
 def generate_temporary_password(length=10):
     alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+from datetime import datetime
+from flask import send_file, request, flash, redirect, url_for
+from data.database import db
+
+@app.route('/backup/download')
+def download_backup():
+    # ساخت نام یکتا همراه با تاریخ روز
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = f"backups/backup_{timestamp}.db"
+    db.backup_database(backup_file)
+    return send_file(backup_file, as_attachment=True, download_name=f"finance_backup_{timestamp}.db")
+
+@app.route('/backup/restore', methods=['POST'])
+def restore_backup():
+    file = request.files.get('backup_file')
+    if not file or file.filename == '':
+        flash('هیچ فایلی انتخاب نشده است.', 'error')
+        return redirect(url_for('profile'))
+    
+    temp_path = "backups/temp_restore.db"
+    file.save(temp_path)
+    if db.restore_database(temp_path):
+        flash('پایگاه داده با موفقیت بازیابی شد.', 'success')
+    else:
+        flash('خطا در بازیابی نسخه پشتیبان.', 'error')
+    return redirect(url_for('profile'))
+@app.route("/reports/transactions/excel")
+def download_transactions_excel():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    transactions = db.get_transactions_by_user(user_id)
+    file_data = export_transactions_excel(transactions)
+
+    return send_file(
+        file_data,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name="transactions.xlsx"
+    )
+
+
+@app.route("/reports/transactions/csv")
+def download_transactions_csv():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    transactions = db.get_transactions_by_user(user_id)
+    file_data = export_transactions_csv(transactions)
+
+    return send_file(
+        file_data,
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="transactions.csv"
+    )
+
+
+@app.route("/reports/transactions/pdf")
+def download_transactions_pdf():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    username = session.get("username", "User")
+    transactions = db.get_transactions_by_user(user_id)
+    file_data = export_transactions_pdf(transactions, username)
+
+    return send_file(
+        file_data,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name="transactions.pdf"
+    )
+@app.route("/admin/dashboard")
+def admin_dashboard():
+    # بررسی لاگین بودن و دسترسی ادمین
+    if not session.get("user_id") or session.get("username") != "admin":
+        return redirect(url_for("dashboard"))
+
+    # دریافت آمار و لیست کاربران از دیتابیس
+    users = db.get_all_users()  # این متد را بررسی می‌کنیم
+    all_transactions = db.get_all_transactions()
+
+    total_income = sum(t.get('amount', 0) for t in all_transactions if t.get('type') == 'income')
+    total_expense = sum(t.get('amount', 0) for t in all_transactions if t.get('type') == 'expense')
+    
+    return render_template(
+        "admin.html",
+        users=users,
+        total_income=total_income,
+        total_expense=total_expense,
+        total_transactions=len(all_transactions)
+    )
+@app.route('/admin')
+def admin_panel():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # کنترل دسترسی: یوزر ۱ (یا ادمین)
+    if session.get('user_id') != 1 and session.get('username') != 'admin':
+        flash('شما دسترسی ادمین ندارید.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    users = db.get_all_users()
+    all_transactions = db.get_all_transactions()
+    return render_template('admin.html', users=users, transactions=all_transactions)
 
 if __name__ == "__main__":
     init_db()

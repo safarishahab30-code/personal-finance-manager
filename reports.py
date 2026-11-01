@@ -1,181 +1,27 @@
-from storage import load_data
-from auth import load_users
-from utils import farsi
-
-TRANSACTIONS_FILE = "data/transactions.json"
-
-def admin_report_summary():
-    transactions = load_data(TRANSACTIONS_FILE)
-    users = load_users()
-
-    total_income = sum(t.get('amount', 0) for t in transactions if t.get('type') == 'income')
-    total_expense = sum(t.get('amount', 0) for t in transactions if t.get('type') == 'expense')
-    balance = total_income - total_expense
-
-    total_count = len(transactions)
-    user_count = len(users)
-
-    print(farsi("\n=== گزارش کلی سیستم ==="))
-    print(farsi(f"تعداد کل کاربران: {user_count}"))
-    print(farsi(f"تعداد کل تراکنش‌ها: {total_count}"))
-    print(farsi(f"مجموع درآمدها: {total_income:,.0f} تومان"))
-    print(farsi(f"مجموع مخارج: {total_expense:,.0f} تومان"))
-    print(farsi(f"تراز مالی کل (مانده): {balance:,.0f} تومان"))
-    print(farsi("------------------------------"))
-from storage import load_data
-from utils import farsi
-
-def show_user_summary(username):
-    transactions = load_data("data/transactions.json")
-    user_txs = [t for t in transactions if t.get("username") == username]
-    
-    if not user_txs:
-        print(farsi("تراکنشی برای گزارش‌گیری یافت نشد."))
-        return
-
-    income = sum(t['amount'] for t in user_txs if t['type'] == 'income')
-    expense = sum(t['amount'] for t in user_txs if t['type'] == 'expense')
-    
-    # گزارش دسته‌بندی
-    print(farsi("\n--- گزارش تفکیکی مخارج ---"))
-    cat_sums = {}
-    for t in user_txs:
-        if t['type'] == 'expense':
-            cat = t['category']
-            cat_sums[cat] = cat_sums.get(cat, 0) + t['amount']
-    
-    for cat, total in cat_sums.items():
-        print(farsi(f"{cat}: {total:,.0f} تومان"))
-    
-    print(farsi("--------------------------"))
-    print(farsi(f"مجموع درآمد: {income:,.0f}"))
-    print(farsi(f"مجموع مخارج: {expense:,.0f}"))
-    print(farsi(f"مانده حساب: {(income - expense):,.0f}"))
-import matplotlib.pyplot as plt
-from storage import load_data
-from utils import farsi
-
-def show_expense_chart(username):
-    transactions = load_data("data/transactions.json")
-    user_txs = [t for t in transactions if t.get("username") == username and t.get("type") == "expense"]
-
-    if not user_txs:
-        print(farsi("هیچ هزینه‌ای برای رسم نمودار ثبت نشده است."))
-        return
-
-    # جمع مبالغ به تفکیک دسته‌بندی
-    category_totals = {}
-    for t in user_txs:
-        cat = t.get("category", "سایر")
-        category_totals[cat] = category_totals.get(cat, 0) + t.get("amount", 0)
-
-    # اصلاح جهت و اتصال حروف فارسی برای نمایش در نمودار
-    categories = [farsi(cat) for cat in category_totals.keys()]
-    amounts = list(category_totals.values())
-
-    # پالت رنگی جذاب
-    colors = plt.get_cmap('tab10').colors
-
-    # رسم نمودار دونات (حلقه‌ای) مدرن
-    plt.figure(figsize=(8, 6))
-    wedges, texts, autotexts = plt.pie(
-        amounts,
-        labels=None,
-        autopct='%1.1f%%',
-        startangle=140,
-        colors=colors,
-        pctdistance=0.75,
-        wedgeprops=dict(width=0.6, edgecolor='white', linewidth=2)
-    )
-
-    # خوانایی و بولد کردن درصدها
-    for autotext in autotexts:
-        autotext.set_fontsize(10)
-        autotext.set_weight('bold')
-
-    # راهنمای دسته‌بندی‌ها در کنار نمودار
-    plt.legend(
-        wedges,
-        categories,
-        title=farsi("دسته‌بندی‌ها"),
-        loc="center left",
-        bbox_to_anchor=(1, 0, 0.5, 1)
-    )
-
-    plt.title(f"Expense Breakdown - {username}", fontsize=13, pad=15)
-    plt.tight_layout()
-
-    print(farsi("در حال نمایش نمودار..."))
-    plt.show()
+import io
 import csv
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
-from storage import load_data
-from utils import farsi
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
 
-TRANSACTIONS_FILE = "data/transactions.json"
 
-def export_transactions_csv(username=None):
+def export_transactions_excel(transactions):
     """
-    خروجی CSV: اگر username داده شود فقط تراکنش‌های آن کاربر، وگرنه تمام تراکنش‌ها (برای ادمین)
+    خروجی Excel با قالب‌بندی رنگی، هدرهای بولد، جهت راست‌به‌چپ و ستون عنوان
+    ارائه به صورت بافر رم موقت برای دانلود از مرورگر
     """
-    transactions = load_data(TRANSACTIONS_FILE)
-    if username:
-        data = [t for t in transactions if t.get("username") == username]
-        filename = f"transactions_{username}.csv"
-        headers = ["شناسه", "نوع", "مبلغ (تومان)", "دسته‌بندی", "توضیحات", "تاریخ"]
-    else:
-        data = transactions
-        filename = "transactions_all_admin.csv"
-        headers = ["شناسه", "کاربر", "نوع", "مبلغ (تومان)", "دسته‌بندی", "توضیحات", "تاریخ"]
-
-    if not data:
-        print(farsi("تراکنشی برای ذخیره وجود ندارد."))
-        return
-
-    with open(filename, mode="w", newline="", encoding="utf-8-sig") as file:
-        writer = csv.writer(file)
-        writer.writerow(headers)
-        for t in data:
-            t_type = "درآمد" if t.get("type") == "income" else "هزینه"
-            row = [
-                t.get("id", "-"),
-                t.get("username") if not username else None,
-                t_type,
-                t.get("amount", 0),
-                t.get("category", "-"),
-                t.get("note", "-"),
-                t.get("date", "-")
-            ]
-            if username:
-                row.pop(1)
-            writer.writerow(row)
-
-    print(farsi(f"فایل CSV با موفقیت ایجاد شد: {filename}"))
-def export_transactions_excel(username=None):
-    """
-    خروجی Excel با قالب‌بندی رنگی، هدرهای بولد و جهت راست‌به‌چپ
-    """
-    transactions = load_data(TRANSACTIONS_FILE)
-    if username:
-        data = [t for t in transactions if t.get("username") == username]
-        filename = f"transactions_{username}.xlsx"
-        headers = ["شناسه", "نوع", "مبلغ (تومان)", "دسته‌بندی", "توضیحات", "تاریخ"]
-    else:
-        data = transactions
-        filename = "transactions_all_admin.xlsx"
-        headers = ["شناسه", "کاربر", "نوع", "مبلغ (تومان)", "دسته‌بندی", "توضیحات", "تاریخ"]
-
-    if not data:
-        print(farsi("تراکنشی برای خروجی اکسل وجود ندارد."))
-        return
-
+    output = io.BytesIO()
     wb = Workbook()
     ws = wb.active
     ws.title = "Transactions"
     ws.sheet_view.rightToLeft = True  # نمایش راست‌به‌چپ شیت
 
-    # استایل هدر
+    headers = ["شناسه", "عنوان", "نوع", "مبلغ (تومان)", "دسته‌بندی", "توضیحات", "تاریخ"]
+
+    # استایل هدر سفارشی
     header_fill = PatternFill(start_color="2F5597", end_color="2F5597", fill_type="solid")
     header_font = Font(name="Tahoma", size=11, bold=True, color="FFFFFF")
     align_center = Alignment(horizontal="center", vertical="center")
@@ -187,27 +33,97 @@ def export_transactions_excel(username=None):
         cell.font = header_font
         cell.alignment = align_center
 
-    # درج داده‌ها
-    for t in data:
+    # درج داده‌های تراکنش کاربر
+    for t in transactions:
         t_type = "درآمد" if t.get("type") == "income" else "هزینه"
         row = [
             t.get("id", "-"),
-            t.get("username") if not username else None,
+            t.get("title", "-"),
             t_type,
             t.get("amount", 0),
             t.get("category", "-"),
             t.get("note", "-"),
-            t.get("date", "-")
+            str(t.get("date", "-"))[:19]
         ]
-        if username:
-            row.pop(1)
         ws.append(row)
 
-    # تنظیم خودکار عرض ستون‌ها
+    # تنظیم خودکار عرض ستون‌ها و تراز وسط سلول‌ها
     for col in ws.columns:
         max_len = max(len(str(cell.value or '')) for cell in col)
         col_letter = col[0].column_letter
         ws.column_dimensions[col_letter].width = max(max_len + 5, 14)
+        for cell in col:
+            if cell.row != 1:
+                cell.alignment = align_center
 
-    wb.save(filename)
-    print(farsi(f"فایل Excel با موفقیت ذخیره شد: {filename}"))
+    wb.save(output)
+    output.seek(0)
+    return output
+
+
+def export_transactions_csv(transactions):
+    """
+    خروجی CSV سازگار با UTF-8-SIG جهت جلوگیری از به‌هم‌ریختگی حروف فارسی در اکسل
+    """
+    output = io.StringIO()
+    writer = csv.writer(output)
+    headers = ["شناسه", "عنوان", "نوع", "مبلغ (تومان)", "دسته‌بندی", "توضیحات", "تاریخ"]
+    writer.writerow(headers)
+
+    for t in transactions:
+        t_type = "درآمد" if t.get("type") == "income" else "هزینه"
+        writer.writerow([
+            t.get("id", "-"),
+            t.get("title", "-"),
+            t_type,
+            t.get("amount", 0),
+            t.get("category", "-"),
+            t.get("note", "-"),
+            str(t.get("date", "-"))[:19]
+        ])
+
+    bytes_output = io.BytesIO()
+    bytes_output.write(output.getvalue().encode("utf-8-sig"))
+    bytes_output.seek(0)
+    return bytes_output
+
+
+def export_transactions_pdf(transactions, username="User"):
+    """
+    تولید گزارش جدول PDF با ReportLab در حافظه موقت
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    title_style = styles["Heading1"]
+    title_style.alignment = 1
+    elements.append(Paragraph(f"Transaction Report - {username}", title_style))
+    elements.append(Spacer(1, 20))
+
+    table_data = [["ID", "Title", "Type", "Amount", "Category", "Date"]]
+    for t in transactions:
+        table_data.append([
+            str(t.get("id")),
+            str(t.get("title", "-"))[:15],
+            str(t.get("type")),
+            f"{int(t.get('amount', 0)):,}",
+            str(t.get("category")),
+            str(t.get("date"))[:10]
+        ])
+
+    table = Table(table_data, colWidths=[35, 120, 60, 80, 100, 80])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2F5597')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+
+    elements.append(table)
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer

@@ -1,30 +1,17 @@
 import sqlite3
-import glob
 
-db_files = glob.glob("**/*.db", recursive=True)
-print("Found databases:", db_files)
+conn = sqlite3.connect("data/finance.db")
+cursor = conn.cursor()
 
-for db_path in db_files:
-    with sqlite3.connect(db_path) as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='budgets'"
-        )
+# 1. بررسی فعال بودن کلیدهای خارجی و خطاهای یکپارچگی
+cursor.execute("PRAGMA foreign_key_check;")
+fk_errors = cursor.fetchall()
 
-        if cur.fetchone() is None:
-            print(f"\n{db_path}: جدول budgets وجود ندارد؛ رد شد.")
-            continue
+# 2. بررسی ساختار جدول تراکنش‌ها
+cursor.execute("PRAGMA table_info(transactions);")
+columns = [col[1] for col in cursor.fetchall()]
 
-        cur.execute("PRAGMA table_info(budgets)")
-        columns = {row[1] for row in cur.fetchall()}
+print("FK Errors:", fk_errors)
+print("Transactions Columns:", columns)
 
-        for column in ("created_at", "updated_at"):
-            if column not in columns:
-                conn.execute(
-                    f"ALTER TABLE budgets ADD COLUMN {column} DATETIME"
-                )
-                print(f"{db_path}: ستون {column} اضافه شد.")
-            else:
-                print(f"{db_path}: ستون {column} از قبل وجود دارد.")
-
-        conn.commit()
+conn.close()

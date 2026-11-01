@@ -25,7 +25,7 @@ class Database:
         return conn
 
     def init_db(self):
-        """ایجاد جدول‌های اصلی در صورت نبودن آن‌ها"""
+        """ایجاد جدول‌ها و اعمال مهاجرت‌های ساختاری"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
@@ -52,6 +52,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS transactions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
+                    title TEXT NOT NULL DEFAULT '',
                     type TEXT CHECK(type IN ('income', 'expense')) NOT NULL,
                     amount REAL NOT NULL,
                     category TEXT NOT NULL,
@@ -64,6 +65,11 @@ class Database:
                 )
                 """
             )
+            
+            # مهاجرت: اطمینان از وجود ستون title در دیتابیس‌های قدیمی
+            columns = {row["name"] for row in cursor.execute("PRAGMA table_info(transactions)").fetchall()}
+            if "title" not in columns:
+                cursor.execute("ALTER TABLE transactions ADD COLUMN title TEXT NOT NULL DEFAULT ''")
 
             # جدول مدیریت بودجه
             cursor.execute(
@@ -195,20 +201,20 @@ class Database:
                 """
                 INSERT INTO transactions (
                     user_id,
+                    title,
                     type,
                     amount,
                     category,
-                    note,
                     date
                 )
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     user_id,
+                    title,
                     transaction_type,
                     amount,
                     category,
-                    title,
                     date
                 )
             )
@@ -222,6 +228,7 @@ class Database:
                 SELECT
                     id,
                     user_id,
+                    title,
                     type,
                     amount,
                     category,
@@ -337,5 +344,36 @@ class Database:
             conn.commit()
         return cursor.rowcount == 1
 
+    def backup_database(self, backup_file_path):
+        """تهیه نسخه پشتیبان امن از دیتابیس"""
+        destination_path = Path(backup_file_path)
+        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.get_connection() as src_conn:
+            with sqlite3.connect(destination_path) as dst_conn:
+                src_conn.backup(dst_conn)
+        return True
+
+    def restore_database(self, backup_file_path):
+        """بازیابی دیتابیس از نسخه پشتیبان معتبر"""
+        source_path = Path(backup_file_path)
+        if not source_path.exists():
+            return False
+        with sqlite3.connect(source_path) as src_conn:
+            with self.get_connection() as dst_conn:
+                src_conn.backup(dst_conn)
+        return True
+    def get_all_users(self):
+        """دریافت لیست تمام کاربران سیستم"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, username, created_at FROM users ORDER BY id ASC")
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_all_transactions(self):
+        """دریافت کل تراکنش‌های ثبت‌شده در سیستم"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM transactions ORDER BY date DESC")
+            return [dict(row) for row in cursor.fetchall()]
 
 db = Database()
