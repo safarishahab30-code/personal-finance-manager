@@ -1,14 +1,25 @@
 ﻿import sqlite3
 
-conn = sqlite3.connect("database.db")  # مسیر فایل دیتابیس پروژه‌ات
-cursor = conn.cursor()
-
-# اضافه کردن ستون ایمیل بدون پاک شدن کاربران قبلی
-try:
-    cursor.execute("ALTER TABLE users ADD COLUMN email TEXT;")
+for db_name in ["database.db", "finance.db"]:
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            is_admin INTEGER DEFAULT 0
+        )
+    """)
+    cursor.execute(
+        "INSERT OR IGNORE INTO users (username, password, is_admin) VALUES (?,"
+        " ?, 1)",
+        ("shahab", "dummy_hash"),
+    )
+    cursor.execute(
+        "UPDATE users SET is_admin = 1 WHERE username = ?", ("shahab",)
+    )
     conn.commit()
-    print("ستون ایمیل با موفقیت اضافه شد.")
-except sqlite3.OperationalError:
-    print("ستون ایمیل از قبل وجود دارد.")
-finally:
+    cursor.execute("SELECT id, username, is_admin FROM users")
+    print(f"کاربران در {db_name}:", cursor.fetchall())
     conn.close()

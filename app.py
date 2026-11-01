@@ -15,10 +15,12 @@ from datetime import datetime, timezone
 import jdatetime
 from data.database import db
 from reports import export_transactions_excel, export_transactions_csv, export_transactions_pdf
+from admin_routes import admin_bp
+from flask import Flask
 
-# مسیر واقعی دیتابیس
+app = Flask(__name__)  
+app.register_blueprint(admin_bp)
 
-app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "a_long_random_secret_key_for_dev_only_change_me")
 
 
@@ -36,8 +38,17 @@ def init_db():
     cursor = conn.cursor()
 
     try:
-        # ایجاد ساختار پایه (بدون تکرار جدول budgets)
         cursor.executescript('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                is_admin INTEGER DEFAULT 0,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT,
+                updated_at TEXT
+            );
+
             CREATE TABLE IF NOT EXISTS budgets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -64,16 +75,24 @@ def init_db():
             );
         ''')
 
-        # بررسی و اضافه کردن ستون‌های مفقود در دیتابیس‌های قدیمی
+        # بررسی و اضافه کردن ستون‌های مفقود در جدول کاربران (برای دیتابیس‌های قدیمی)
+        cursor.execute("PRAGMA table_info(users)")
+        u_columns = [row[1] for row in cursor.fetchall()]
+        if 'is_admin' not in u_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+        if 'is_active' not in u_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
+
+        # بررسی و اضافه کردن ستون‌های مفقود در جدول تراکنش‌ها
         cursor.execute("PRAGMA table_info(transactions)")
         columns = [row[1] for row in cursor.fetchall()]
-        
         if 'title' not in columns:
             cursor.execute("ALTER TABLE transactions ADD COLUMN title TEXT")
         if 'created_at' not in columns:
             cursor.execute("ALTER TABLE transactions ADD COLUMN created_at TEXT")
         if 'updated_at' not in columns:
             cursor.execute("ALTER TABLE transactions ADD COLUMN updated_at TEXT")
+
         # بررسی و اضافه کردن ستون‌های مفقود در جدول budgets
         cursor.execute("PRAGMA table_info(budgets)")
         b_columns = [row[1] for row in cursor.fetchall()]
@@ -83,7 +102,7 @@ def init_db():
             cursor.execute("ALTER TABLE budgets ADD COLUMN updated_at TEXT")
 
         conn.commit()
-        print("Database initialized.")
+        print("Database initialized successfully.")
     except sqlite3.Error as e:
         print(f"DB init error: {e}")
         conn.rollback()
@@ -94,11 +113,14 @@ def init_db():
 #  مسیرهای عمومی
 # ---------------------------------------------------------------
 @app.route('/')
+def home():
+    return render_template('intro.html')
+
+@app.route('/')
 def index():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return render_template('intro.html')
-
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -136,38 +158,26 @@ def register():
             conn.close()
 
     return render_template('register.html')
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-
-        conn = get_db_connection()
-        try:
-            user = conn.execute(
-                'SELECT id, username, password_hash FROM users WHERE username = ?', (username,)
-            ).fetchone()
-
-            if user and check_password_hash(user['password_hash'], password):
-                session.clear()
-                session['user_id'] = user['id']
-                session['username'] = user['username']
-                flash('ورود شما موفقیت‌آمیز بود.', 'success')
-                return redirect(url_for('dashboard'))
-
-            flash('نام کاربری یا رمز عبور اشتباه است.', 'danger')
-            return render_template('login.html')
-        except sqlite3.Error as e:
-            print(f"Login DB error: {e}")
-            flash('خطایی در ورود رخ داد.', 'danger')
-            return render_template('login.html')
-        finally:
-            conn.close()
-
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = query_db('SELECT * FROM users WHERE username = ?', [username], one=True)
+        
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['is_admin'] = user['is_admin']
+            
+            if user['is_admin'] == 1:
+                 redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('dashboard'))
+            
+        flash('نام کاربری یا رمز عبور اشتباه است.', 'error')
+    
     return render_template('login.html')
-
 
 @app.route('/logout')
 def logout():
@@ -175,6 +185,31 @@ def logout():
     flash('با موفقیت از حساب خارج شدید.', 'info')
     return redirect(url_for('login'))
 import jdatetime
+import sqlite3
+from flask import g
+
+DATABASE = 'finance.db'  # یا نام فایل دیتابیس پروژه شما
+
+
+def get_db():
+  db = getattr(g, '_database', None)
+  if db is None:
+    db = g._database = sqlite3.connect(DATABASE)
+    db.row_factory = sqlite3.Row
+  return db
+
+
+@app.teardown_appcontext
+def close_connection(exception):
+  db = getattr(g, '_database', None)
+  if db is not None:
+    db.close()
+
+def query_db(query, args=(), one=False):
+  cur = get_db().execute(query, args)
+  rv = cur.fetchall()
+  cur.close()
+  return (rv[0] if rv else None) if one else rv
 
 
 # تعریف فیلتر جلالی
@@ -1083,39 +1118,6 @@ def download_transactions_pdf():
         as_attachment=True,
         download_name="transactions.pdf"
     )
-@app.route("/admin/dashboard")
-def admin_dashboard():
-    # بررسی لاگین بودن و دسترسی ادمین
-    if not session.get("user_id") or session.get("username") != "admin":
-        return redirect(url_for("dashboard"))
-
-    # دریافت آمار و لیست کاربران از دیتابیس
-    users = db.get_all_users()  # این متد را بررسی می‌کنیم
-    all_transactions = db.get_all_transactions()
-
-    total_income = sum(t.get('amount', 0) for t in all_transactions if t.get('type') == 'income')
-    total_expense = sum(t.get('amount', 0) for t in all_transactions if t.get('type') == 'expense')
-    
-    return render_template(
-        "admin.html",
-        users=users,
-        total_income=total_income,
-        total_expense=total_expense,
-        total_transactions=len(all_transactions)
-    )
-@app.route('/admin')
-def admin_panel():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    # کنترل دسترسی: یوزر ۱ (یا ادمین)
-    if session.get('user_id') != 1 and session.get('username') != 'admin':
-        flash('شما دسترسی ادمین ندارید.', 'danger')
-        return redirect(url_for('dashboard'))
-    
-    users = db.get_all_users()
-    all_transactions = db.get_all_transactions()
-    return render_template('admin.html', users=users, transactions=all_transactions)
 
 if __name__ == "__main__":
     init_db()

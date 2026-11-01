@@ -2,66 +2,181 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>پنل مدیریت | Admin Panel</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <title>پنل مدیریت پیشرفته</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        body { background-color: #121212; color: #f1f1f1; font-family: Tahoma, sans-serif; }
-        .card { background-color: #1e1e1e; border: 1px solid #333; }
-        .table { color: #f1f1f1; border-color: #333; }
+        :root {
+            --admin-bg: #121212;
+            --card-bg: #1e1e2f;
+            --sidebar-bg: #1a1a2e;
+            --accent-color: #bb86fc;
+            --accent-hover: #3700b3;
+            --text-main: #e0e0e0;
+            --text-muted: #94a3b8;
+            --border-color: #2a2a40;
+            --danger-color: #b00020;
+            --danger-hover: #cf6679;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--admin-bg); color: var(--text-main); font-family: Tahoma, sans-serif; display: flex; direction: rtl; min-height: 100vh; }
+        
+        /* سایدبار ثابت */
+        .sidebar { width: 260px; height: 100vh; background: var(--sidebar-bg); position: fixed; top: 0; right: 0; padding: 25px 20px; border-left: 1px solid var(--border-color); z-index: 100; }
+        .sidebar h2 { color: var(--accent-color); font-size: 1.3rem; margin-bottom: 35px; text-align: center; }
+        .sidebar a { display: block; color: #cfd8dc; text-decoration: none; padding: 12px 18px; margin-bottom: 12px; border-radius: 6px; transition: 0.3s; font-size: 0.95rem; }
+        .sidebar a:hover, .sidebar a.active { background: var(--accent-hover); color: #fff; }
+    
+        /* محتوای اصلی */
+        .main-content { margin-right: 260px; padding: 40px; width: calc(100% - 260px); min-height: 100vh; background-color: var(--admin-bg); }
+        
+        /* کارت‌ها و بلوک‌ها */
+        .card, .admin-card { background: var(--card-bg); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border: 1px solid var(--border-color); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .card h3 { color: var(--accent-color); margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+    
+        /* جدول‌ها و دکمه‌ها */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 14px; text-align: right; border-bottom: 1px solid #2c2c3e; font-size: 0.9rem; }
+        th { background: #252538; color: var(--accent-color); font-weight: bold; }
+        td { color: var(--text-main); }
+        tr:hover { background: rgba(187, 134, 252, 0.05); }
+
+        .btn-action { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: all 0.2s ease-in-out; display: inline-block; }
+        .btn-action:hover { opacity: 0.9; transform: scale(1.02); }
+        
+        .btn-danger { background-color: var(--danger-color); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: 0.2s; margin-right: 5px; }
+        .btn-danger:hover { background-color: var(--danger-hover); }
+
+        select, input[type="text"] { padding: 8px 12px; background: #252538; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; font-family: Tahoma, sans-serif; font-size: 0.9rem; outline: none; }
+        input[type="text"]:focus { border-color: var(--accent-color); }
     </style>
 </head>
-<body class="p-4">
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="text-warning">پنل مدیریت سیستم (Admin)</h3>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light">بازگشت به داشبورد</a>
+<body>
+
+    <!-- سایدبار مدیریت -->
+    <div class="sidebar">
+        <h2>پنل مدیریت</h2>
+        <a href="#overview" class="active">داشبورد و آمار</a>
+        <a href="#users">مدیریت کاربران</a>
+        <a href="#transactions">کل تراکنش‌ها</a>
+        <a href="{{ url_for('admin.admin_export_csv') }}" style="background: #018786; text-align: center;">دانلود گزارش CSV</a>
+        <a href="{{ url_for('dashboard') }}" style="margin-top: 30px; background: var(--danger-color); text-align: center;">بازگشت به سایت</a>
+    </div>
+
+    <!-- محتوای اصلی -->
+    <div class="main-content">
+        <!-- کارت‌های آمار سریع -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px;">
+            <div style="background: #1e1e2f; padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <p style="color: #9ca3af; font-size: 14px; margin: 0;">کل کاربران</p>
+                <h3 style="color: #ffffff; font-size: 24px; margin: 10px 0 0 0; border:none; padding:0;">{{ total_users }}</h3>
+            </div>
+            <div style="background: #1e1e2f; padding: 20px; border-radius: 12px; border-left: 4px solid #10b981; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <p style="color: #9ca3af; font-size: 14px; margin: 0;">کل تراکنش‌ها</p>
+                <h3 style="color: #ffffff; font-size: 24px; margin: 10px 0 0 0; border:none; padding:0;">{{ total_transactions }}</h3>
+            </div>
+            <div style="background: #1e1e2f; padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <p style="color: #9ca3af; font-size: 14px; margin: 0;">مجموع حجم مالی</p>
+                <h3 style="color: #ffffff; font-size: 22px; margin: 10px 0 0 0; border:none; padding:0;">{{ "{:,}".format(stats.total_income - stats.total_expense) }} تومان</h3>
+            </div>
+            <div style="background: #1e1e2f; padding: 20px; border-radius: 12px; border-left: 4px solid #ec4899; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <p style="color: #9ca3af; font-size: 14px; margin: 0;">تعداد ادمین‌ها</p>
+                <h3 style="color: #ffffff; font-size: 24px; margin: 10px 0 0 0; border:none; padding:0;">{{ admin_count }}</h3>
+            </div>
         </div>
 
-        <div class="row g-4">
-            <!-- آمار کلی و لیست کاربران -->
-            <div class="col-md-6">
-                <div class="card p-3">
-                    <h5>کاربران سیستم ({{ users|length }})</h5>
-                    <ul class="list-group list-group-flush mt-2" style="max-height: 400px; overflow-y: auto;">
-                        {% for u in users %}
-                        <li class="list-group-item bg-dark text-light d-flex justify-content-between border-secondary">
-                            <span>شناسه: {{ u.id }} - {{ u.username }}</span>
-                            <span class="text-muted">{{ u.created_at or '-' }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
+        <!-- فیلتر و جستجوی زنده تراکنش‌ها -->
+        <div class="admin-card">
+            <h3>فیلتر و جستجوی تراکنش‌ها</h3>
+            <form method="GET" action="{{ url_for('admin.admin_dashboard') }}" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                <input type="text" name="search" placeholder="جستجوی عنوان یا کاربر..." value="{{ request.args.get('search', '') }}" style="flex: 1; min-width: 200px;">
+                
+                <select name="user_id">
+                    <option value="">همه کاربران</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}" {% if user_filter == u.id|string %}selected{% endif %}>{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+                
+                <select name="type">
+                    <option value="">همه انواع</option>
+                    <option value="income" {% if type_filter == 'income' %}selected{% endif %}>واریز</option>
+                    <option value="expense" {% if type_filter == 'expense' %}selected{% endif %}>برداشت</option>
+                </select>
+                
+                <button type="submit" class="btn-action">اعمال فیلتر / جستجو</button>
+            </form>
+        </div>
 
-            <!-- تمام تراکنش‌ها -->
-            <div class="col-md-6">
-                <div class="card p-3">
-                    <h5>کل تراکنش‌های ثبت‌شده ({{ transactions|length }})</h5>
-                    <div style="max-height: 400px; overflow-y: auto;">
-                        <table class="table table-dark table-sm mt-2">
-                            <thead>
-                                <tr>
-                                    <th>یوزر</th>
-                                    <th>عنوان</th>
-                                    <th>مبلغ</th>
-                                    <th>تاریخ</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for tx in transactions %}
-                                <tr>
-                                    <td>{{ tx.user_id }}</td>
-                                    <td>{{ tx.title or tx.category }}</td>
-                                    <td>{{ "{:,}".format(tx.amount) }}</td>
-                                    <td>{{ tx.date }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+        <!-- مدیریت کاربران -->
+        <div id="users" class="admin-card">
+            <h3>لیست کاربران و دسترسی‌ها</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>شناسه</th>
+                        <th>نام کاربری</th>
+                        <th>وضعیت ادمین</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ 'ادمین' if user.is_admin else 'کاربر عادی' }}</td>
+                        <td>
+                            <form action="{{ url_for('admin.toggle_admin', user_id=user.id) }}" method="POST" style="display:inline;">
+                                <button type="submit" class="btn-action" style="padding: 6px 12px;">تغییر وضعیت</button>
+                            </form>
+                            {% if user.id != session.get('user_id') %}
+                            <form action="{{ url_for('admin.delete_user', user_id=user.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('آیا از حذف این کاربر اطمینان دارید؟');">
+                                <button type="submit" class="btn-danger">حذف</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- کل تراکنش‌ها -->
+        <div id="transactions" class="admin-card">
+            <h3>کل تراکنش‌های کاربران</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>شناسه</th>
+                        <th>کاربر</th>
+                        <th>عنوان</th>
+                        <th>مبلغ</th>
+                        <th>نوع</th>
+                        <th>تاریخ</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr>
+                        <td>{{ tx.id }}</td>
+                        <td>{{ tx.username }}</td>
+                        <td>{{ tx.title if tx.title else '-' }}</td>
+                        <td>{{ "{:,}".format(tx.amount) }} تومان</td>
+                        <td>{{ 'واریز' if tx.type == 'income' else 'برداشت' }}</td>
+                        <td>{{ tx.date }}</td>
+                        <td>
+                            <form action="{{ url_for('admin.admin_delete_transaction', tx_id=tx.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('آیا از حذف این تراکنش مطمئن هستید؟');">
+                                <button type="submit" class="btn-danger">حذف</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
+
 </body>
 </html>
