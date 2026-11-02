@@ -155,12 +155,96 @@
                  {% endif %}
             </div>
         </div>
-   
-    <!-- Analytics Charts Section -->
+    <!-- Add Transaction -->
     <section class="glass-card section-card">
         <div class="section-heading">
-            <span class="section-label">تحلیل داده‌ها</span>
-            <h2>نمودار تفکیک هزینه‌ها</h2>
+            <span class="section-label">ثبت جدید</span>
+            <h2>افزودن تراکنش جدید</h2>
+        </div>
+
+        <form action="{{ url_for('add_transaction') }}" method="POST" class="custom-form transaction-form">
+            <div class="input-group">
+                <label for="add-txn-amount">مبلغ (تومان)</label>
+                <input
+                    type="text"
+                    id="add-txn-amount"
+                    name="amount"
+                    placeholder="مثلاً 500,000"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    required
+                    oninput="formatAmountInput(this)"
+                >
+                <small
+                    id="amount-live-preview"
+                    style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;"
+                ></small>
+            </div>
+            <datalist id="expense-categories">
+                {% for cat in expense_categories %}
+                    <option value="{{ cat }}">
+                {% endfor %}
+            </datalist>
+            
+            <datalist id="income-categories">
+                {% for cat in income_categories %}
+                    <option value="{{ cat }}">
+                {% endfor %}
+            </datalist>
+            
+            <div class="input-group">
+                <label for="add-txn-date">تاریخ تراکنش</label>
+                <!-- اینپوت نمایشی برای انتخاب‌گر تقویم -->
+                <input
+                    type="text"
+                    id="add-txn-date"
+                    class="p-datepicker"
+                    value="{{ today or '' }}"
+                    placeholder="انتخاب یا تاریخ امروز"
+                    autocomplete="off"
+                    required
+                >
+                <!-- اینپوت مخفی ارسالی به فرم برای یکپارچگی داده‌ها -->
+                <input type="hidden" name="date" id="add_txn_date_hidden" value="{{ today or '' }}">
+            </div>
+            
+            <div class="input-group">
+                <label for="add-txn-title">عنوان / توضیحات</label>
+                <input type="text" id="add-txn-title" name="title" placeholder="مثلاً خرید کتاب" required>
+            </div>
+
+            <div class="input-group">
+                <label for="txn-type">نوع تراکنش</label>
+                <select id="txn-type" name="type" required onchange="updateCategoryList()">
+                    <option value="expense" selected>هزینه</option>
+                    <option value="income">درآمد</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="category-input">دسته‌بندی</label>
+                <input
+                    type="text"
+                    id="category-input"
+                    name="category"
+                    list="expense-categories"
+                    placeholder="انتخاب یا نوشتن دسته‌بندی"
+                    autocomplete="off"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn-submit">+ ثبت تراکنش</button>
+        </form>
+    </section>
+
+    <!-- Analytics Charts Section -->
+    <section class="glass-card section-card">
+        <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <span class="section-label">تحلیل داده‌ها</span>
+                <h2>نمودار تفکیک هزینه‌ها</h2>
+            </div>
         </div>
         <div class="chart-wrapper">
             <div class="chart-box">
@@ -171,7 +255,7 @@
             </div>
         </div>
     </section>
-    <!-- Budget Management Section -->
+
     <section class="glass-card section-card">
         <div class="section-heading">
             <span class="section-label">برنامه‌ریزی مالی</span>
@@ -407,89 +491,6 @@
         {% endif %}
     </section>
 
-    <!-- Add Transaction -->
-    <section class="glass-card section-card">
-        <div class="section-heading">
-            <span class="section-label">ثبت جدید</span>
-            <h2>افزودن تراکنش جدید</h2>
-        </div>
-
-        <form action="{{ url_for('add_transaction') }}" method="POST" class="custom-form transaction-form">
-            <div class="input-group">
-                <label for="add-txn-amount">مبلغ (تومان)</label>
-                <input
-                    type="text"
-                    id="add-txn-amount"
-                    name="amount"
-                    placeholder="مثلاً 500,000"
-                    inputmode="numeric"
-                    autocomplete="off"
-                    required
-                    oninput="formatAmountInput(this)"
-                >
-                <small
-                    id="amount-live-preview"
-                    style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;"
-                ></small>
-            </div>
-            
-            <datalist id="expense-categories">
-                {% for cat in expense_categories %}
-                    <option value="{{ cat }}">
-                {% endfor %}
-            </datalist>
-            
-            <datalist id="income-categories">
-                {% for cat in income_categories %}
-                    <option value="{{ cat }}">
-                {% endfor %}
-            </datalist>
-            
-            <div class="input-group">
-                <label for="add-txn-date">تاریخ تراکنش</label>
-                <!-- اینپوت نمایشی برای انتخاب‌گر تقویم -->
-                <input
-                    type="text"
-                    id="add-txn-date"
-                    class="p-datepicker"
-                    value="{{ today or '' }}"
-                    placeholder="انتخاب یا تاریخ امروز"
-                    autocomplete="off"
-                    required
-                >
-                <!-- اینپوت مخفی ارسالی به فرم برای یکپارچگی داده‌ها -->
-                <input type="hidden" name="date" id="add_txn_date_hidden" value="{{ today or '' }}">
-            </div>
-            
-            <div class="input-group">
-                <label for="add-txn-title">عنوان / توضیحات</label>
-                <input type="text" id="add-txn-title" name="title" placeholder="مثلاً خرید کتاب" required>
-            </div>
-
-            <div class="input-group">
-                <label for="txn-type">نوع تراکنش</label>
-                <select id="txn-type" name="type" required onchange="updateCategoryList()">
-                    <option value="expense" selected>هزینه</option>
-                    <option value="income">درآمد</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label for="category-input">دسته‌بندی</label>
-                <input
-                    type="text"
-                    id="category-input"
-                    name="category"
-                    list="expense-categories"
-                    placeholder="انتخاب یا نوشتن دسته‌بندی"
-                    autocomplete="off"
-                    required
-                >
-            </div>
-
-            <button type="submit" class="btn-submit">+ ثبت تراکنش</button>
-        </form>
-    </section>
 
     <!-- Transactions Table & Filters -->
     <section class="glass-card section-card" id="transactions-section">
@@ -910,6 +911,111 @@
     }, 5000);
 </script>
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // ۱. مدیریت حذف بودجه بدون رفرش
+        window.deleteBudget = function(budgetId) {
+            if (!confirm('آیا از حذف این بودجه اطمینان دارید؟')) return;
+    
+            fetch(`/delete_budget/${budgetId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const card = document.getElementById(`budget-card-${budgetId}`);
+                    if (card) card.remove();
+                } else {
+                    alert(data.message || 'خطا در حذف بودجه');
+                }
+            })
+            .catch(err => console.error('Error:', err));
+        };
+    
+        // ۲. مدیریت عمومی تمام فرم‌ها (افزودن تراکنش، قلک، بودجه و...) با AJAX
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', async function(e) {
+                // اگر فرم خاصی مد نظرست که نباید ایجکس شود، این شرط را بردار
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                
+                // پاک‌سازی کاماها از فیلدهای عددی در صورت وجود
+                formData.forEach((value, key) => {
+                    if (typeof value === 'string' && key.includes('amount')) {
+                        formData.set(key, value.replace(/,/g, '').trim());
+                    }
+                });
+    
+                try {
+                    const response = await fetch(this.action || window.location.href, {
+                        method: this.method || 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+    
+                    if (response.ok) {
+                        // به‌روزرسانی داده‌های داشبورد یا رندر مجدد بخش‌های پویا بدون رفرش کل صفحه
+                        // برای پیاده‌سازی کامل بدون رفرش، بهتر است مقادیر DOM یا داده‌های نمودار را آپدیت کنی
+                        // در صورت نیاز به بازخوانی داده‌ها، می‌توان از fetch به یک اندپوینت JSON استفاده کرد
+                        location.reload(); // فعلاً برای همگام‌سازی کامل داده‌ها نگه داشته شده، مگر اینکه پاسخ JSON بگیریم
+                    } else {
+                        alert('خطا در انجام عملیات.');
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                }
+            });
+        });
+    
+    });
+    </script>
+<script>
+let myChart;
+
+function renderChart(type = 'doughnut') {
+    const canvas = document.getElementById('expenseChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    if (myChart) myChart.destroy();
+
+    const labels = {{ chart_labels | tojson | safe }};
+    const data = {{ chart_data | tojson | safe }};
+
+    myChart = new Chart(ctx, {
+        type: type,
+        data: {
+            labels: labels.length ? labels : ['بدون داده'],
+            datasets: [{
+                data: data.length ? data : [1],
+                backgroundColor: ['#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#14b8a6'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#ffffff', font: { family: 'Vazirmatn' } } }
+            }
+        }
+    });
+}
+
+function updateChartType(newType) {
+    document.getElementById('btnDoughnut')?.classList.toggle('active', newType === 'doughnut');
+    document.getElementById('btnBar')?.classList.toggle('active', newType === 'bar');
+    renderChart(newType);
+}
+
+    // لود اولیه نمودار هنگام بارگذاری صفحه
+    document.addEventListener('DOMContentLoaded', () => {
+        renderChart('doughnut');
+    });
+    </script>
+    
+<script>
 function deleteBudget(budgetId) {
     if (!confirm('آیا از حذف این بودجه اطمینان دارید؟')) return;
 
@@ -967,28 +1073,39 @@ function deleteBudget(budgetId) {
     });
 </script>
 <script>
+    // ۱. تغییر پویای لیست دسته‌بندی‌ها بر اساس نوع تراکنش
+    function updateCategoryList() {
+        const txnType = document.getElementById('txn-type').value;
+        const categoryInput = document.getElementById('category-input');
+        
+        if (txnType === 'income') {
+            categoryInput.setAttribute('list', 'income-categories');
+        } else {
+            categoryInput.setAttribute('list', 'expense-categories');
+        }
+        categoryInput.value = '';
+    }
+    
+    // ۲. فرم ایجکس قلک
     document.querySelectorAll('.savings-ajax-form').forEach(form => {
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             const msgDiv = document.getElementById('savings-message');
-            
-            // ذخیره موقعیت اسکرول فعلی برای جلوگیری کامل از پرش
             sessionStorage.setItem('scrollPos', window.scrollY);
-
-            // پاک‌کردن کاماها از عدد قبل از ارسال به سرور پایتون
+    
             const input = this.querySelector('input[name="amount"]');
             const rawAmount = input.value.replace(/,/g, '').trim();
-
+    
             const formData = new FormData();
             formData.append('amount', rawAmount);
-
+    
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
                     body: formData,
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
-
+    
                 if (response.ok) {
                     location.reload();
                 } else {
@@ -1002,8 +1119,149 @@ function deleteBudget(budgetId) {
             }
         });
     });
-</script>
+    
+    // ۳. نمودار و مدیریت اسکرول و حذف بودجه
+    let myChart;
+    
+    function renderChart(type = 'doughnut') {
+        const canvas = document.getElementById('expenseChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        if (myChart) {
+            myChart.destroy();
+        }
+    
+        myChart = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: ['تفریح و سرگرمی', 'خوراکی و سوپرمارکت'],
+                datasets: [{
+                    data: [1000000, 4500000],
+                    backgroundColor: ['#ec4899', '#8b5cf6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#ffffff' } }
+                }
+            }
+        });
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // بازیابی موقعیت اسکرول
+        const scrollPos = sessionStorage.getItem('scrollPos');
+        if (scrollPos) {
+            window.scrollTo(0, parseInt(scrollPos));
+            sessionStorage.removeItem('scrollPos');
+        }
+    
+        renderChart('doughnut');
+    });
+    
+    // مدیریت حذف بودجه
+    window.deleteBudget = function(budgetId) {
+        if (!confirm('آیا از حذف این بودجه اطمینان دارید؟')) return;
+    
+        fetch(`/delete_budget/${budgetId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.getElementById(`budget-card-${budgetId}`);
+                if (card) card.remove();
+            } else {
+                alert(data.message || 'خطا در حذف بودجه');
+            }
+        })
+        .catch(err => console.error('Error:', err));
+    };
+    
+    // ذخیره موقعیت اسکرول قبل از ارسال فرم‌ها
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('scrollPos', window.scrollY);
+        });
+    });
+    </script>
+    
+<script>
+    let myChart;
+    
+    function renderChart(type = 'doughnut') {
+        const canvas = document.getElementById('expenseChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        if (myChart) {
+            myChart.destroy();
+        }
+    
+        myChart = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: ['تفریح و سرگرمی', 'خوراکی و سوپرمارکت'],
+                datasets: [{
+                    data: [1000000, 4500000],
+                    backgroundColor: ['#ec4899', '#8b5cf6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#ffffff' } }
+                }
+            }
+        });
+    }
+    
 
+        // بازیابی موقعیت اسکرول در صورت رلود صفحه
+        const scrollPos = sessionStorage.getItem('scrollPos');
+        if (scrollPos) {
+            window.scrollTo(0, parseInt(scrollPos));
+            sessionStorage.removeItem('scrollPos');
+        }
+    
+        renderChart('doughnut');
+    
+        // مدیریت حذف بودجه بدون رپرش کامل
+        window.deleteBudget = function(budgetId) {
+            if (!confirm('آیا از حذف این بودجه اطمینان دارید؟')) return;
+    
+            fetch(`/delete_budget/${budgetId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const card = document.getElementById(`budget-card-${budgetId}`);
+                    if (card) card.remove();
+                } else {
+                    alert(data.message || 'خطا در حذف بودجه');
+                }
+            })
+            .catch(err => console.error('Error:', err));
+        };
+    
+        // ذخیره موقعیت اسکرول قبل از ارسال فرم‌ها و رلود
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                sessionStorage.setItem('scrollPos', window.scrollY);
+            });
+        });
+    });
+    </script>
+    </body>
+    </html>
+    
 </body>
 </html>
 
