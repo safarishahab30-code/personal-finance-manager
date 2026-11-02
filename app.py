@@ -1,27 +1,21 @@
 import os
 import sqlite3
-import os
 import io
 import csv
-from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
-from data import database as db
 import secrets
 import string
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 import jdatetime
-from data.database import db
+from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response, send_file, jsonify, g
+from werkzeug.security import generate_password_hash, check_password_hash
+from data import database as db
 from reports import export_transactions_excel, export_transactions_csv, export_transactions_pdf
 from admin_routes import admin_bp
-from flask import Flask
 
 app = Flask(__name__)  
 app.register_blueprint(admin_bp)
 
-app.secret_key = os.environ.get("SECRET_KEY", "a_long_random_secret_key_for_dev_only_change_me")
+app.secret_key = "secret-9c8f2b3a1e4d7f6c"
 
 
 # ---------------------------------------------------------------
@@ -72,6 +66,18 @@ def init_db():
                 created_at TEXT,
                 updated_at TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS savings_goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            target_amount REAL NOT NULL,
+            current_amount REAL DEFAULT 0,
+            deadline TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
         ''')
 
@@ -165,14 +171,13 @@ def login():
         password = request.form.get('password')
         
         user = query_db('SELECT * FROM users WHERE username = ?', [username], one=True)
-        
-        if user and check_password_hash(user['password'], password):
+        if user and check_password_hash(user['password_hash'], password):
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['is_admin'] = user['is_admin']
             
             if user['is_admin'] == 1:
-                 redirect(url_for('admin.admin_dashboard'))
+                return redirect(url_for('admin.admin_dashboard'))
             return redirect(url_for('dashboard'))
             
         flash('نام کاربری یا رمز عبور اشتباه است.', 'error')
@@ -188,16 +193,12 @@ import jdatetime
 import sqlite3
 from flask import g
 
-DATABASE = 'finance.db'  # یا نام فایل دیتابیس پروژه شما
-
-
 def get_db():
-  db = getattr(g, '_database', None)
-  if db is None:
-    db = g._database = sqlite3.connect(DATABASE)
-    db.row_factory = sqlite3.Row
-  return db
-
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DB_PATH)
+        db.row_factory = sqlite3.Row
+    return db
 
 @app.teardown_appcontext
 def close_connection(exception):
@@ -919,9 +920,10 @@ def change_password():
             "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
             (new_hash, now, session["user_id"])
         )
+
         conn.commit()
         flash("رمز عبور با موفقیت به‌روزرسانی شد.", "success")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("profile"))
     except Exception as e:
         conn.rollback()
         flash("خطایی در تغییر رمز عبور رخ داد.", "danger")

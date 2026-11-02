@@ -55,13 +55,14 @@ def admin_dashboard():
     stats = conn.execute('''
         SELECT 
             (SELECT COUNT(*) FROM users) as total_users,
-            COUNT(*) as total_count,
+            (SELECT COUNT(*) FROM transactions) as total_count,
+            (SELECT COUNT(DISTINCT user_id) FROM users WHERE is_admin = 1) as total_admins,
             COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_income,
             COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expense,
             COALESCE(AVG(amount), 0) as avg_amount
         FROM transactions
     ''').fetchone()
-    
+
     conn.close()
     
     return render_template(
@@ -69,6 +70,9 @@ def admin_dashboard():
         users=users, 
         transactions=transactions, 
         stats=stats, 
+        total_users=stats['total_users'],
+        total_transactions=stats['total_count'],
+        admin_count=stats['total_admins'],
         user_filter=user_filter, 
         type_filter=type_filter
     )

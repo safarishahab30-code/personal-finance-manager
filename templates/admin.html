@@ -24,8 +24,31 @@
         /* سایدبار ثابت */
         .sidebar { width: 260px; height: 100vh; background: var(--sidebar-bg); position: fixed; top: 0; right: 0; padding: 25px 20px; border-left: 1px solid var(--border-color); z-index: 100; }
         .sidebar h2 { color: var(--accent-color); font-size: 1.3rem; margin-bottom: 35px; text-align: center; }
-        .sidebar a { display: block; color: #cfd8dc; text-decoration: none; padding: 12px 18px; margin-bottom: 12px; border-radius: 6px; transition: 0.3s; font-size: 0.95rem; }
-        .sidebar a:hover, .sidebar a.active { background: var(--accent-hover); color: #fff; }
+        
+        .sidebar a { 
+            display: block; 
+            color: #cfd8dc; 
+            text-decoration: none; 
+            padding: 12px 18px; 
+            margin-bottom: 12px; 
+            border-radius: 6px; 
+            font-size: 0.95rem; 
+            transition: all 0.3s ease;
+            border-right: 3px solid transparent;
+        }
+        
+        .sidebar a:hover { 
+            background: rgba(139, 92, 246, 0.2); 
+            border-right-color: #8b5cf6;
+            padding-right: 22px;
+            color: #fff;
+        }
+
+        .sidebar a.active { 
+            background: var(--accent-hover); 
+            color: #fff; 
+            border-right-color: var(--accent-color);
+        }
     
         /* محتوای اصلی */
         .main-content { margin-right: 260px; padding: 40px; width: calc(100% - 260px); min-height: 100vh; background-color: var(--admin-bg); }
@@ -50,19 +73,13 @@
         select, input[type="text"] { padding: 8px 12px; background: #252538; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; font-family: Tahoma, sans-serif; font-size: 0.9rem; outline: none; }
         input[type="text"]:focus { border-color: var(--accent-color); }
     </style>
+
 </head>
 <body>
-
-    <!-- سایدبار مدیریت -->
-    <div class="sidebar">
-        <h2>پنل مدیریت</h2>
-        <a href="#overview" class="active">داشبورد و آمار</a>
-        <a href="#users">مدیریت کاربران</a>
-        <a href="#transactions">کل تراکنش‌ها</a>
-        <a href="{{ url_for('admin.admin_export_csv') }}" style="background: #018786; text-align: center;">دانلود گزارش CSV</a>
-        <a href="{{ url_for('dashboard') }}" style="margin-top: 30px; background: var(--danger-color); text-align: center;">بازگشت به سایت</a>
-    </div>
-
+        <div class="sidebar-brand" style="padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px;">
+            <h3 style="color: #fff; font-size: 16px; margin: 0;">🛡️ پنل مدیریت</h3>
+        </div>
+    
     <!-- محتوای اصلی -->
     <div class="main-content">
         <!-- کارت‌های آمار سریع -->
